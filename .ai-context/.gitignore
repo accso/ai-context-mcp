@@ -1,0 +1,44 @@
+# Runtime-generated resolution cache — do not commit
+.resolved.json
+
+# Persisted interactive Java/EPL-2.0 opt-in choice (see ai-context-up.sh /
+# validate_config.py's _java_epl_marker_path) — a local machine's choice,
+# not a team-wide config.yaml setting; never commit.
+.java-epl-accepted-*
+
+# API keys and secrets — never commit
+.env
+
+# ── AI Context backup — git strategy ─────────────────────────────────────────
+#
+# COMMIT  → qdrant.vectors.json  (text, git baseline — written by every backup)
+#           postgres.json        (row export for all project tables)
+#
+# IGNORE  → qdrant.snapshot      (binary, large — written by every backup, local only)
+#           backup_meta.json     (display metadata only — timestamps, counts; local only)
+#           *.tmp.*              (in-progress temp files from atomic rename)
+#
+# Restore priority (newer file wins by mtime):
+#   Both present  → newer one is used
+#   Local dev     → snapshot is newer (last Ctrl-C backup) → fast restore, HNSW preserved
+#   Fresh clone   → only json present                      → git-baseline restore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Local-only: binary snapshot, display metadata, and obsolete heartbeat files
+**/qdrant.snapshot
+**/backup_meta.json
+**/.watcher_heartbeat.json
+
+# In-progress temp files
+**/*.tmp.*
+**/dist/
+**/node_modules/
+node_modules/
+
+# Host-run Python scripts (scripts/*.py run outside Docker)
+**/__pycache__/
+*.pyc
+
+# Test artifacts (pytest cache, node:test coverage if enabled later)
+**/.pytest_cache/
+

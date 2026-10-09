@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Context — Context Map</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3347;
+    --text: #e2e8f0;
+    --text-muted: #8892a4;
+    --accent: #6366f1;
+    --ctx-registry:   #7c3aed;
+    --ctx-indexing:   #2563eb;
+    --ctx-storage:    #d97706;
+    --ctx-retrieval:  #059669;
+    --ctx-gateway:    #dc2626;
+    --ctx-external:   #475569;
+    --uc-setup:     #7c3aed;
+    --uc-watch:     #2563eb;
+    --uc-query:     #059669;
+    --uc-resolve:   #d97706;
+    --uc-heal:      #0891b2;
+    --uc-backup:    #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px 0;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 6px;
+  }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header p  { font-size: 12px; color: var(--text-muted); }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .tab-nav {
+    display: flex;
+    gap: 2px;
+  }
+  .tab-nav a {
+    display: inline-block;
+    padding: 7px 15px;
+    font-size: 13px;
+    font-weight: 500;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .tab-nav a:hover { color: var(--text); }
+  .tab-nav a.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar-title {
+    padding: 14px 16px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .uc-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text);
+    text-align: left;
+    width: 100%;
+    border-left: 3px solid transparent;
+    transition: background .15s;
+    font-size: 13px;
+  }
+  .uc-btn:hover { background: var(--surface2); }
+  .uc-btn.active {
+    background: var(--surface2);
+    border-left-color: var(--accent);
+  }
+  .uc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .uc-label { flex: 1; line-height: 1.3; }
+  .uc-id { font-size: 10px; color: var(--text-muted); display: block; }
+  .canvas-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg);
+  }
+  #map-svg { width: 100%; height: 100%; cursor: grab; }
+  #map-svg:active { cursor: grabbing; }
+  .ctx-group { cursor: pointer; }
+  .ctx-box { fill: var(--surface); stroke-width: 2; transition: filter .2s; }
+  .ctx-group:hover .ctx-box { filter: brightness(1.2); }
+  .ctx-group.active .ctx-box { filter: brightness(1.4); }
+  .ctx-group.dim .ctx-box { opacity: .25; }
+  .ctx-group.dim text { opacity: .25; }
+  .ctx-title { font-weight: 700; font-size: 14px; fill: var(--text); }
+  .ctx-subtitle { font-size: 11px; fill: var(--text-muted); }
+  .ctx-entity { font-size: 11px; fill: var(--text); }
+  .edge { fill: none; stroke-width: 2; transition: opacity .2s; marker-end: url(#arrow); }
+  .edge.dim { opacity: .1; }
+  .edge.active { stroke-width: 3; opacity: 1; }
+  .edge-label { font-size: 10px; fill: var(--text-muted); text-anchor: middle; }
+  .edge-label.dim { opacity: .1; }
+  .edge-label.active { fill: var(--text); }
+  .tool-bar {
+    position: absolute;
+    bottom: 16px; right: 16px;
+    display: flex; gap: 8px;
+  }
+  .tool-btn {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+  }
+  .tool-btn:hover { background: var(--surface2); }
+  .detail {
+    width: 340px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+    transition: width .25s;
+  }
+  .detail.hidden { width: 0; overflow: hidden; }
+  .detail-inner { padding: 20px; min-width: 340px; }
+  .detail-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .detail-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+  .detail-title { font-size: 16px; font-weight: 700; }
+  .detail-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .detail-section { margin-top: 16px; }
+  .detail-section h4 {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .step-list { list-style: none; }
+  .step-list li { display: flex; gap: 10px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+  .step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--surface2); font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .ctx-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ctx-tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+  .pattern-list { list-style: none; }
+  .pattern-list li {
+    font-size: 12px; padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted); line-height: 1.4;
+  }
+  .pattern-list li strong { color: var(--text); }
+  .legend {
+    position: absolute; bottom: 16px; left: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; font-size: 11px;
+  }
+  .legend-title { font-weight: 700; margin-bottom: 6px; color: var(--text-muted); }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .legend-line { width: 24px; height: 2px; }
+  .close-btn {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 18px; cursor: pointer; padding: 0 4px; margin-left: auto; line-height: 1;
+  }
+  .close-btn:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>AI Context — Architecture Explorer</h1>
+      <p>Bounded contexts, integration patterns, and business use cases</p>
+    </div>
+    <span class="badge">5 Bounded Contexts</span>
+    <span class="badge">6 Use Cases</span>
+    <span class="badge">7 Patterns</span>
+  </div>
+  <nav class="tab-nav">
+    <a href="overview.html">Overview</a>
+    <a href="context-map.html" class="active">Context Map</a>
+    <a href="infrastructure.html">Infrastructure</a>
+    <a href="sequences.html">Sequences</a>
+    <a href="chunking.html">Chunking Strategy</a>
+  </nav>
+</header>
+
+<div class="main">
+
+  <aside class="sidebar">
+    <div class="sidebar-title">Business Use Cases</div>
+    <button class="uc-btn" data-uc="all" onclick="selectUC('all')">
+      <span class="uc-dot" style="background:#6366f1"></span>
+      <span class="uc-label"><span class="uc-id">ALL</span>Show full map</span>
+    </button>
+    <button class="uc-btn" data-uc="uc1" onclick="selectUC('uc1')">
+      <span class="uc-dot" style="background:var(--uc-setup)"></span>
+      <span class="uc-label"><span class="uc-id">UC-1</span>Initial Project Setup</span>
+    </button>
+    <button class="uc-btn" data-uc="uc2" onclick="selectUC('uc2')">
+      <span class="uc-dot" style="background:var(--uc-watch)"></span>
+      <span class="uc-label"><span class="uc-id">UC-2</span>Live File Change</span>
+    </button>
+    <button class="uc-btn" data-uc="uc3" onclick="selectUC('uc3')">
+      <span class="uc-dot" style="background:var(--uc-query)"></span>
+      <span class="uc-label"><span class="uc-id">UC-3</span>Developer Query (search)</span>
+    </button>
+    <button class="uc-btn" data-uc="uc4" onclick="selectUC('uc4')">
+      <span class="uc-dot" style="background:var(--uc-resolve)"></span>
+      <span class="uc-label"><span class="uc-id">UC-4</span>Code Retrieval (get_file)</span>
+    </button>
+    <button class="uc-btn" data-uc="uc5" onclick="selectUC('uc5')">
+      <span class="uc-dot" style="background:var(--uc-heal)"></span>
+      <span class="uc-label"><span class="uc-id">UC-5</span>Self-Healing on Restart</span>
+    </button>
+    <button class="uc-btn" data-uc="uc6" onclick="selectUC('uc6')">
+      <span class="uc-dot" style="background:var(--uc-backup)"></span>
+      <span class="uc-label"><span class="uc-id">UC-6</span>Backup &amp; Restore</span>
+    </button>
+
+    <div class="sidebar-title" style="margin-top:16px">Bounded Contexts</div>
+    <button class="uc-btn" data-ctx="registry" onclick="selectCTX('registry')">
+      <span class="uc-dot" style="background:var(--ctx-registry)"></span>
+      <span class="uc-label"><span class="uc-id">CTX</span>Project Registry</span>
+    </button>
+    <button class="uc-btn" data-ctx="indexing" onclick="selectCTX('indexing')">
+      <span class="uc-dot" style="background:var(--ctx-indexing)"></span>
+      <span class="uc-label"><span class="uc-id">CTX</span>Indexing</span>
+    </button>
+    <button class="uc-btn" data-ctx="storage" onclick="selectCTX('storage')">
+      <span class="uc-dot" style="background:var(--ctx-storage)"></span>
+      <span class="uc-label"><span class="uc-id">CTX</span>Storage</span>
+    </button>
+    <button class="uc-btn" data-ctx="retrieval" onclick="selectCTX('retrieval')">
+      <span class="uc-dot" style="background:var(--ctx-retrieval)"></span>
+      <span class="uc-label"><span class="uc-id">CTX</span>Retrieval</span>
+    </button>
+    <button class="uc-btn" data-ctx="gateway" onclick="selectCTX('gateway')">
+      <span class="uc-dot" style="background:var(--ctx-gateway)"></span>
+      <span class="uc-label"><span class="uc-id">CTX</span>MCP Server (Agent Interface)</span>
+    </button>
+  </aside>
+
+  <div class="canvas-wrap">
+    <svg id="map-svg" viewBox="0 0 900 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#4a5568"/>
+        </marker>
+        <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+        </marker>
+        <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#059669"/>
+        </marker>
+        <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#dc2626"/>
+        </marker>
+        <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#d97706"/>
+        </marker>
+        <marker id="arrow-purple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#7c3aed"/>
+        </marker>
+      </defs>
+
+      <path id="e-reg-idx" class="edge" d="M 290,160 Q 310,220 340,260"
+        stroke="#7c3aed" stroke-dasharray="6,4" marker-end="url(#arrow-purple)"/>
+      <text class="edge-label" x="307" y="218"><tspan>Conformist</tspan></text>
+
+      <path id="e-idx-sto" class="edge" d="M 450,320 Q 490,360 530,380"
+        stroke="#2563eb" marker-end="url(#arrow-blue)"/>
+      <text class="edge-label" x="503" y="356">
+        <tspan>Repository</tspan><tspan x="503" dy="12">write</tspan>
+      </text>
+
+      <path id="e-sto-ret" class="edge" d="M 640,420 Q 660,450 670,480"
+        stroke="#d97706" marker-end="url(#arrow-orange)"/>
+      <text class="edge-label" x="670" y="452">
+        <tspan>Repository</tspan><tspan x="670" dy="12">read</tspan>
+      </text>
+
+      <path id="e-ret-gw" class="edge" d="M 700,450 Q 720,380 740,320"
+        stroke="#059669" marker-end="url(#arrow-green)"/>
+      <text class="edge-label" x="738" y="386">
+        <tspan>Published</tspan><tspan x="738" dy="12">Language</tspan>
+      </text>
+
+      <path id="e-gw-ext" class="edge" d="M 740,220 Q 800,200 840,185"
+        stroke="#dc2626" marker-end="url(#arrow-red)"/>
+      <text class="edge-label" x="800" y="196">
+        <tspan>MCP</tspan><tspan x="800" dy="12">Protocol</tspan>
+      </text>
+
+      <path id="e-reg-gw" class="edge" d="M 290,130 Q 520,80 720,140"
+        stroke="#7c3aed" stroke-dasharray="6,4" marker-end="url(#arrow-purple)"/>
+      <text class="edge-label" x="490" y="82">
+        <tspan>Conformist (port/project config)</tspan>
+      </text>
+
+      <path id="e-idx-ret" class="edge" d="M 460,330 Q 560,400 640,460"
+        stroke="#4a5568" stroke-dasharray="4,4" opacity="0.4"/>
+
+      <!-- PROJECT REGISTRY -->
+      <g id="ctx-registry" class="ctx-group" onclick="selectCTX('registry')">
+        <rect class="ctx-box" x="100" y="80" width="200" height="160" stroke="var(--ctx-registry)" rx="12" ry="12"/>
+        <rect x="100" y="80" width="200" height="36" rx="12" fill="var(--ctx-registry)" opacity="0.25"/>
+        <rect x="100" y="104" width="200" height="12" fill="var(--ctx-registry)" opacity="0.25"/>
+        <text class="ctx-title" x="200" y="104" text-anchor="middle">Project Registry</text>
+        <text class="ctx-subtitle" x="200" y="120" text-anchor="middle">Configuration Context</text>
+        <line x1="112" y1="128" x2="288" y2="128" stroke="var(--border)" stroke-width="1"/>
+        <text class="ctx-entity" x="116" y="146" fill="#a78bfa">&#9670; Project</text>
+        <text class="ctx-entity" x="116" y="162">  project_key, profile</text>
+        <text class="ctx-entity" x="116" y="176">  root_path, sources</text>
+        <text class="ctx-entity" x="116" y="196" fill="#a78bfa">&#9670; ResolvedConfig</text>
+        <text class="ctx-entity" x="116" y="212">  merged settings</text>
+        <rect x="100" y="230" width="200" height="10" rx="0" fill="var(--ctx-registry)" opacity="0.1"/>
+        <text class="ctx-subtitle" x="200" y="237" text-anchor="middle">config.yaml · .resolved.json</text>
+      </g>
+
+      <!-- INDEXING -->
+      <g id="ctx-indexing" class="ctx-group" onclick="selectCTX('indexing')">
+        <rect class="ctx-box" x="290" y="200" width="210" height="200" stroke="var(--ctx-indexing)" rx="12" ry="12"/>
+        <rect x="290" y="200" width="210" height="36" rx="12" fill="var(--ctx-indexing)" opacity="0.25"/>
+        <rect x="290" y="224" width="210" height="12" fill="var(--ctx-indexing)" opacity="0.25"/>
+        <text class="ctx-title" x="395" y="224" text-anchor="middle">Indexing</text>
+        <text class="ctx-subtitle" x="395" y="240" text-anchor="middle">File Analysis Context</text>
+        <line x1="302" y1="248" x2="488" y2="248" stroke="var(--border)" stroke-width="1"/>
+        <text class="ctx-entity" x="306" y="266" fill="#93c5fd">&#9670; FileChunk</text>
+        <text class="ctx-entity" x="306" y="281">  text, start/end line, type</text>
+        <text class="ctx-entity" x="306" y="299" fill="#93c5fd">&#9670; Symbol</text>
+        <text class="ctx-entity" x="306" y="314">  name, kind, signature</text>
+        <text class="ctx-entity" x="306" y="329" fill="#93c5fd">&#9670; L1Summary</text>
+        <text class="ctx-entity" x="306" y="344">  SHA-cached LLM summary</text>
+        <text class="ctx-entity" x="306" y="362" fill="#93c5fd">&#9670; DocTree</text>
+        <text class="ctx-entity" x="306" y="377">  hierarchical .md index</text>
+        <rect x="290" y="388" width="210" height="12" fill="var(--ctx-indexing)" opacity="0.1"/>
+        <text class="ctx-subtitle" x="395" y="397" text-anchor="middle">watcher · chunker · AST</text>
+      </g>
+
+      <!-- STORAGE -->
+      <g id="ctx-storage" class="ctx-group" onclick="selectCTX('storage')">
+        <rect class="ctx-box" x="490" y="340" width="200" height="170" stroke="var(--ctx-storage)" rx="12" ry="12"/>
+        <rect x="490" y="340" width="200" height="36" rx="12" fill="var(--ctx-storage)" opacity="0.25"/>
+        <rect x="490" y="364" width="200" height="12" fill="var(--ctx-storage)" opacity="0.25"/>
+        <text class="ctx-title" x="590" y="364" text-anchor="middle">Storage</text>
+        <text class="ctx-subtitle" x="590" y="380" text-anchor="middle">Persistence Context</text>
+        <line x1="502" y1="388" x2="678" y2="388" stroke="var(--border)" stroke-width="1"/>
+        <text class="ctx-entity" x="506" y="406" fill="#fbbf24">&#9670; VectorStore</text>
+        <text class="ctx-entity" x="506" y="421">  Qdrant — embeddings</text>
+        <text class="ctx-entity" x="506" y="439" fill="#fbbf24">&#9670; RelationalStore</text>
+        <text class="ctx-entity" x="506" y="454">  Postgres — metadata</text>
+        <text class="ctx-entity" x="506" y="469">  file_index, l1, symbols</text>
+        <rect x="490" y="498" width="200" height="12" fill="var(--ctx-storage)" opacity="0.1"/>
+        <text class="ctx-subtitle" x="590" y="507" text-anchor="middle">Qdrant · PostgreSQL</text>
+      </g>
+
+      <!-- RETRIEVAL -->
+      <g id="ctx-retrieval" class="ctx-group" onclick="selectCTX('retrieval')">
+        <rect class="ctx-box" x="600" y="450" width="200" height="160" stroke="var(--ctx-retrieval)" rx="12" ry="12"/>
+        <rect x="600" y="450" width="200" height="36" rx="12" fill="var(--ctx-retrieval)" opacity="0.25"/>
+        <rect x="600" y="474" width="200" height="12" fill="var(--ctx-retrieval)" opacity="0.25"/>
+        <text class="ctx-title" x="700" y="474" text-anchor="middle">Retrieval</text>
+        <text class="ctx-subtitle" x="700" y="490" text-anchor="middle">Query Processing Context</text>
+        <line x1="612" y1="498" x2="788" y2="498" stroke="var(--border)" stroke-width="1"/>
+        <text class="ctx-entity" x="616" y="516" fill="#6ee7b7">&#9670; RankedHit</text>
+        <text class="ctx-entity" x="616" y="531">  file:line, score, symbol, L1</text>
+        <text class="ctx-entity" x="616" y="549" fill="#6ee7b7">&#9670; QueryExpansion</text>
+        <text class="ctx-entity" x="616" y="564">  framework + generic variants</text>
+        <text class="ctx-entity" x="616" y="582" fill="#6ee7b7">&#9670; ReRanker</text>
+        <rect x="600" y="598" width="200" height="12" fill="var(--ctx-retrieval)" opacity="0.1"/>
+        <text class="ctx-subtitle" x="700" y="607" text-anchor="middle">Hybrid scoring · ColBERT reranker</text>
+      </g>
+
+      <!-- GATEWAY -->
+      <g id="ctx-gateway" class="ctx-group" onclick="selectCTX('gateway')">
+        <rect class="ctx-box" x="620" y="100" width="200" height="230" stroke="var(--ctx-gateway)" rx="12" ry="12"/>
+        <rect x="620" y="100" width="200" height="36" rx="12" fill="var(--ctx-gateway)" opacity="0.25"/>
+        <rect x="620" y="124" width="200" height="12" fill="var(--ctx-gateway)" opacity="0.25"/>
+        <text class="ctx-title" x="720" y="124" text-anchor="middle">Agent Interface</text>
+        <text class="ctx-subtitle" x="720" y="140" text-anchor="middle">MCP Server — Agent-Facing Tools</text>
+        <line x1="632" y1="148" x2="808" y2="148" stroke="var(--border)" stroke-width="1"/>
+        <text class="ctx-entity" x="636" y="166" fill="#fca5a5">&#9670; MCPTool</text>
+        <text class="ctx-entity" x="636" y="181">  repo_structure() · semantic_search(q)</text>
+        <text class="ctx-entity" x="636" y="196">  get_file(path)</text>
+        <text class="ctx-entity" x="636" y="211">  analyze_impact() · resolve_symbol()</text>
+        <text class="ctx-entity" x="636" y="229" fill="#fca5a5">&#9670; Instructions</text>
+        <text class="ctx-entity" x="636" y="244">  per-project handshake + skill file</text>
+        <text class="ctx-entity" x="636" y="262" fill="#fca5a5">&#9670; AdminTools</text>
+        <text class="ctx-entity" x="636" y="277">  /mcp-admin (2 tools)</text>
+        <rect x="620" y="303" width="200" height="27" rx="0" fill="var(--ctx-gateway)" opacity="0.1"/>
+        <text class="ctx-subtitle" x="720" y="317" text-anchor="middle">MCP Server · Express · StreamableHTTP</text>
+      </g>
+
+      <!-- EXTERNAL IDE -->
+      <g id="ctx-external">
+        <rect x="840" y="100" width="50" height="170" rx="10"
+          fill="var(--surface)" stroke="var(--ctx-external)" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text fill="var(--text-muted)" font-size="11" text-anchor="middle"
+          transform="translate(865,185) rotate(-90)">Agent (MCP client)</text>
+      </g>
+
+      <g id="uc-overlay"></g>
+    </svg>
+
+    <div class="tool-bar">
+      <button class="tool-btn" onclick="zoom(1.2)" title="Zoom in">+</button>
+      <button class="tool-btn" onclick="zoom(0.8)" title="Zoom out">-</button>
+      <button class="tool-btn" onclick="resetView()" title="Reset">&#8635;</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Relationships</div>
+      <div class="legend-row">
+        <div class="legend-line" style="border-top:2px dashed #7c3aed;background:none;height:0"></div>
+        <span style="font-size:11px;color:var(--text-muted)">Conformist (downstream reads config)</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-line" style="background:#2563eb;height:2px"></div>
+        <span style="font-size:11px;color:var(--text-muted)">Repository (write)</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-line" style="background:#d97706;height:2px"></div>
+        <span style="font-size:11px;color:var(--text-muted)">Repository (read)</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-line" style="background:#059669;height:2px"></div>
+        <span style="font-size:11px;color:var(--text-muted)">Published Language (ranked hit)</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-line" style="background:#dc2626;height:2px"></div>
+        <span style="font-size:11px;color:var(--text-muted)">MCP Protocol (ACL)</span>
+      </div>
+    </div>
+  </div>
+
+  <aside class="detail hidden" id="detail-panel">
+    <div class="detail-inner" id="detail-inner"></div>
+  </aside>
+
+</div>
+
+<script>
+var USE_CASES = {
+  uc1: {
+    id: 'UC-1', title: 'Initial Project Setup', color: '#7c3aed',
+    trigger: 'Developer runs: mise run ai-context-up',
+    contexts: ['registry','indexing','storage','gateway'],
+    edges: ['e-reg-idx','e-idx-sto','e-reg-gw'],
+    steps: [
+      'Validate config.yaml, write .resolved.json (Project Registry)',
+      'Register project in PostgreSQL projects table (Storage)',
+      'Create Qdrant vector collection 768-dim cosine distance (Storage)',
+      'Build Docker images: watcher + MCP server containers (Registry)',
+      'Prompt for backup restore if .ai-context/database-backup/ exists',
+      'Run full index: scan all eligible files, chunk, embed, upsert Qdrant (Indexing)',
+      'Extract symbols into symbol_index — tree-sitter AST for 8 languages, chunker-derived fallback for the rest (Indexing)',
+      'Generate LLM L1 summaries per file (SHA-cached) (Indexing)',
+      'Build PageIndex doc trees for large .md files (Indexing)',
+      'Generate static L0 project map (modules, entry points, routing)',
+      'Start consolidated MCP Server + File Watcher containers for the whole repo (Gateway)',
+      'Register MCP URL in each configured IDE mcp_config_path (default: .vscode/mcp.json and GitHub Copilot config) (Gateway)'
+    ],
+    patterns: [
+      {name:'Conformist', desc:'Indexing + Gateway read resolved config produced by Registry'},
+      {name:'Repository', desc:'Indexer writes chunks, symbols, summaries via db.py repository'},
+      {name:'Idempotent Upserts', desc:'ON CONFLICT DO UPDATE — safe to re-run'}
+    ]
+  },
+  uc2: {
+    id: 'UC-2', title: 'Live File Change', color: '#2563eb',
+    trigger: 'Developer saves a file in the watched repository',
+    contexts: ['indexing','storage'], edges: ['e-idx-sto'],
+    steps: [
+      'Watchdog detects filesystem event (created / modified / deleted / moved)',
+      'Debounce: wait 2 seconds for settle, batch rapid saves',
+      'Compute SHA-256 of new file content',
+      'Compare SHA against file_index in PostgreSQL',
+      'If SHA unchanged but L1 missing: generate L1 summary only',
+      'If SHA changed: delete old Qdrant vectors for this file',
+      'Re-chunk file using language-aware AST boundaries',
+      'Re-embed only changed chunks (stable UUID v5 IDs — unchanged chunks preserved)',
+      'Upsert Qdrant delta (typically 1-3 chunks per function edit)',
+      'Rebuild symbol_index for the file in PostgreSQL',
+      'Regenerate L1 summary via LLM (SHA-keyed cache)',
+      'If large .md file: rebuild doc tree in doc_trees table',
+      'Update file_index record with new SHA and chunk_count'
+    ],
+    patterns: [
+      {name:'Domain Event Handler', desc:'Watchdog events routed through DebounceHandler.flush_pending()'},
+      {name:'Stable Chunk IDs', desc:'UUID v5 from SHA256(project:path:text) — delta embedding only'},
+      {name:'Content-Addressed Cache', desc:'L1 summary keyed by (project, path, SHA) — reverts are free'}
+    ]
+  },
+  uc3: {
+    id: 'UC-3', title: 'Developer Query via Agent', color: '#059669',
+    trigger: 'Calling agent drives its own retrieval loop: repo_structure() → semantic_search("how does auth work?") → get_file(...)',
+    contexts: ['gateway','retrieval','storage'], edges: ['e-gw-ext','e-ret-gw','e-sto-ret'],
+    steps: [
+      'Agent calls repo_structure() on /mcp for orientation (module map, directory tree) — no LLM involved (Gateway → Storage)',
+      'Agent calls semantic_search(query) on /mcp (Gateway)',
+      'If the query looks like a single identifier: resolve directly via symbol_index in PostgreSQL (fast-path, Storage)',
+      'Otherwise: expand the query (framework-keyword variants + generic lexical variants), embed each variant, search Qdrant per variant (Retrieval)',
+      'Merge candidates across variants, keep best score per chunk (Retrieval)',
+      'Re-rank merged candidates: ColBERT MaxSim via the shared inference service (always attempted), falling back to term-frequency keyword boost only on a transient failure (Retrieval)',
+      'Attach cached L1 summaries for the top-ranked files (Storage)',
+      'Return raw ranked hits (file:line, score, symbol, L1 summary) to the agent — no LLM condensation, no prose summary (Gateway)',
+      'Agent judges relevance itself and decides whether to call get_file for full content'
+    ],
+    patterns: [
+      {name:'Anti-Corruption Layer', desc:'MCP Server shields the agent from raw Qdrant/PostgreSQL internals behind 3 typed tools'},
+      {name:'Published Language', desc:'RankedHit (file:line, score, symbol) is the shared contract returned to the agent'},
+      {name:'Hybrid Search', desc:'0.75 x semantic score + 0.25 x keyword boost (fallback only on inference-service failure)'},
+      {name:'Strategy Pattern', desc:'Mandatory ColBERT re-ranker (always attempted) replaces keyword-boost scoring, which is now only a resilience fallback'}
+    ]
+  },
+  uc4: {
+    id: 'UC-4', title: 'Code Retrieval (get_file)', color: '#d97706',
+    trigger: 'Agent calls MCP tool: get_file("src/auth/UserService.kt", 45, 120)',
+    contexts: ['gateway','storage'], edges: ['e-gw-ext','e-sto-ret'],
+    steps: [
+      'Agent sends get_file(file_path, [start_line], [end_line]) to the MCP Server (Gateway)',
+      'Extension safelist check against config.yaml include_extensions; directory paths get an auto-detect hint pointing back at repo_structure',
+      'Doc-tree routing check: if this file was tree-indexed (large Markdown), serve its TOC + section instead of chunks',
+      'Otherwise: scroll all chunks for the file from Qdrant by relative_path filter, sort by start_line, slice locally to the requested range — no per-chunk UUID lookup, no LLM call (Storage)',
+      'Filter to the requested line range if start_line/end_line were passed; sort by line order',
+      'Return raw source code, capped by max_chars, directly to the agent'
+    ],
+    patterns: [
+      {name:'Published Language', desc:'file_path + line range is the stable cross-context identifier'},
+      {name:'CQRS-like split', desc:'semantic_search does ranked, multi-source retrieval; get_file is a direct, unranked read of one known file'}
+    ]
+  },
+  uc5: {
+    id: 'UC-5', title: 'Self-Healing on Restart', color: '#0891b2',
+    trigger: 'Watcher container starts (after crash or planned restart)',
+    contexts: ['indexing','storage'], edges: ['e-idx-sto'],
+    steps: [
+      'SHA-delta reconciliation: scan all eligible files, compare SHA against file_index',
+      'Re-index new or changed files; remove vectors for deleted files',
+      'Qdrant parity check: compare SUM(chunk_count) from file_index vs actual Qdrant count',
+      'Per-file repair on mismatch: re-embed any file with wrong vector count',
+      'L1 backfill: single query finds all file_index rows with no matching l1_summaries',
+      'Generate missing L1 summaries via LLM (batch, SHA-keyed)',
+      'L0 refresh: regenerate static project map if any changes were applied',
+      'Begin live filesystem watching (watchdog)',
+      'Schedule periodic reconciliation every 30 minutes'
+    ],
+    patterns: [
+      {name:'Compensating Actions', desc:'_self_heal_qdrant(), _self_heal_l1_summaries() — startup invariant checks'},
+      {name:'Idempotent Repair', desc:'All healing operations are safe to re-run; use ON CONFLICT DO UPDATE'},
+      {name:'Graceful Degradation', desc:'Partial results built if tree-sitter or LLM unavailable'}
+    ]
+  },
+  uc6: {
+    id: 'UC-6', title: 'Backup & Restore', color: '#dc2626',
+    trigger: 'Container shutdown or explicit: mise run ai-context-backup',
+    contexts: ['registry','storage','indexing'], edges: ['e-reg-idx','e-idx-sto'],
+    steps: [
+      'BACKUP: On container stop, create Qdrant snapshot per project',
+      'Export Qdrant vectors to JSON (portable format)',
+      'Export PostgreSQL data (projects, file_index, l1_summaries, l0_maps, doc_trees) to JSON — symbol_index/import_edges/call_edges are NOT included and rebuild from a reindex instead',
+      'Write to .ai-context/database-backup/<project_key>/',
+      'RESTORE: On fresh clone, mise run ai-context-up detects backup presence',
+      'Prompt developer: restore from backup? (avoids full re-index)',
+      'Load Qdrant snapshot (or JSON vectors if snapshot unavailable)',
+      'Import PostgreSQL JSON data including L1 summary cache',
+      'Teammates avoid re-summarizing entire codebase on fresh clone — but the call/import graph and symbol index still rebuild on next reindex'
+    ],
+    patterns: [
+      {name:'Content-Addressed Cache', desc:'L1 summaries in backup survive across machines — SHA-keyed'},
+      {name:'Snapshot + Journal', desc:'Qdrant snapshot for fast restore; JSON fallback for portability'}
+    ]
+  }
+};
+
+var CTX_DATA = {
+  registry: {
+    title: 'Project Registry', subtitle: 'Configuration Context', color: '#7c3aed',
+    description: 'Single source of truth for all project definitions, shared settings (LLM, indexer, reranker top_n), and inter-project federation topology. Embedding model is no longer a shared setting — it is hardcoded in the mandatory inference service, not config.yaml.',
+    entities: ['Project (project_key, profile, root_path, sources)', 'ResolvedConfig (.resolved.json — merged settings)', 'SharedSettings (LLM, indexer, reranker top_n)'],
+    files: ['config.yaml', '.resolved.json', 'scripts/validate_config.py', 'watcher/config_loader.py'],
+    containers: ['validate_config (init-time only)']
+  },
+  indexing: {
+    title: 'Indexing', subtitle: 'File Analysis Context', color: '#2563eb',
+    description: 'Watches the filesystem for changes, chunks source files (tree-sitter AST boundaries for Java/C#/TypeScript/TSX, language-aware regex boundaries for the rest — including switch/when/match dispatch-arm sub-chunking for TS/TSX/JS/JSX/Java/C#/Swift/Kotlin/Python only, not all languages), embeds chunks, extracts symbols (tree-sitter AST for Python/TS/TSX/JS/JSX/Java/C#/Kotlin/Swift, chunker-derived fallback for the rest), generates LLM file summaries, and builds hierarchical doc trees.',
+    entities: ['FileChunk (text, start/end line, type incl. "case" for dispatch arms, embedding)', 'Symbol (name, kind, signature, parent — tree-sitter or chunker-fallback sourced)', 'L1Summary (LLM summary, SHA-cached)', 'L0Map (modules, entry points, routing)', 'DocTree (PageIndex-style .md hierarchy)'],
+    files: ['watcher/indexer.py', 'watcher/chunker.py', 'watcher/symbol_extractor.py', 'watcher/embedder.py', 'watcher/l0_generator.py', 'watcher/doc_tree_builder.py', 'watcher/llm_summariser.py', 'watcher/watcher.py'],
+    containers: ['<repo-slug>_context_watcher (one container, one watchdog task per project)']
+  },
+  storage: {
+    title: 'Storage', subtitle: 'Persistence Context', color: '#d97706',
+    description: 'Dual-store persistence: Qdrant (vector search, one collection per project) and PostgreSQL (relational metadata). Stable content-addressed chunk IDs enable efficient delta updates.',
+    entities: ['VectorStore — Qdrant (chunk embeddings + payload)', 'RelationalStore — PostgreSQL (file_index, l1_summaries, l0_maps, doc_trees, symbol_index)', 'StableChunkID — UUID v5 from SHA256(project:path:text)'],
+    files: ['watcher/db.py', 'infrastructure/init.sql', 'infrastructure/docker-compose.yml'],
+    containers: ['ai_context_qdrant (shared)', 'ai_context_postgres (shared)']
+  },
+  retrieval: {
+    title: 'Retrieval', subtitle: 'Query Processing Context', color: '#059669',
+    description: 'Answers semantic_search queries directly — no LLM in the path. Identifier-shaped queries resolve via symbol_index; prose queries are expanded (framework-keyword + generic lexical variants), embedded, searched in Qdrant, merged, and re-ranked (ColBERT MaxSim via FastEmbed by default, or a cross-encoder backend — chosen at Docker build time — always attempted, falling back to a keyword-boost blend only on a transient failure). If the top pre-rerank score is still below 0.5, a low-confidence warning is prepended to the results.',
+    entities: ['RankedHit (file:line, score, symbol, L1 summary)', 'QueryExpansion (framework-keyword + generic lexical variants)', 'ReRanker (ColBERT MaxSim via FastEmbed, or cross-encoder backend; keyword-boost is a failure-only fallback)', 'HybridScore (0.75 x semantic + 0.25 x keyword, fallback only)', 'LowConfidenceNotice (top pre-rerank score < 0.5)'],
+    files: ['mcp-server/src/context_assembler.ts', 'inference/main.py'],
+    containers: ['ai_context_inference (shared, mandatory)']
+  },
+  gateway: {
+    title: 'Agent Interface', subtitle: 'MCP Server — Agent-Facing Tools', color: '#dc2626',
+    description: 'Anti-Corruption Layer between the calling agent and the retrieval/storage internals. Exposes exactly 5 MCP tools (repo_structure, semantic_search, get_file, analyze_impact, resolve_symbol) on /mcp — the agent drives its own retrieval loop, there is no LLM-routed subagent in between. Two operator-only diagnostics live on a separate /mcp-admin endpoint. Delivers instructions at handshake time and via a skill file.',
+    entities: ['MCPTool repo_structure() — L0 map + directory tree, [hub]/[bridge] structural-role tags', 'MCPTool semantic_search(query) — ranked hits + why provenance note, no LLM condensation', 'MCPTool get_file(path) — direct chunk/doc-tree read', 'MCPTool analyze_impact(symbol_name, direction) — call/import graph blast-radius traversal', 'MCPTool resolve_symbol(file_path, line, character, kind) — real LSP definition/references/hover via LSP Bridge, for auto-detected languages', 'Instructions — per-project handshake text + skill file', 'AdminTools — 2 tools on /mcp-admin only'],
+    files: ['mcp-server/src/multi_server.ts', 'mcp-server/src/project_server.ts', 'mcp-server/src/db.ts', 'mcp-server/src/qdrant.ts', 'mcp-server/src/doc_tree.ts', 'mcp-server/src/config.ts'],
+    containers: ['<repo-slug>_context_mcp (one container, one Express app per project on its own port)', '<repo-slug>_context_lsp (one container per repo, backs resolve_symbol)']
+  }
+};
+
+var currentSelection = null;
+var viewX = 0, viewY = 0, viewScale = 1;
+var isDragging = false, dragStartX, dragStartY, dragViewX, dragViewY;
+var svg = document.getElementById('map-svg');
+
+function applyTransform() {
+  var g = svg.querySelector('#map-content');
+  if (g) g.setAttribute('transform', 'translate(' + viewX + ',' + viewY + ') scale(' + viewScale + ')');
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  var children = Array.prototype.slice.call(svg.childNodes).filter(function(n){ return n.nodeType === 1; });
+  var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.id = 'map-content';
+  children.forEach(function(c){ g.appendChild(c); });
+  svg.appendChild(g);
+  applyTransform();
+});
+
+function zoom(factor) {
+  viewScale = Math.max(0.4, Math.min(2, viewScale * factor));
+  applyTransform();
+}
+function resetView() { viewX = 0; viewY = 0; viewScale = 1; applyTransform(); }
+
+svg.addEventListener('mousedown', function(e) {
+  if (e.target === svg || e.target.id === 'map-content') {
+    isDragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    dragViewX = viewX; dragViewY = viewY;
+  }
+});
+window.addEventListener('mousemove', function(e) {
+  if (!isDragging) return;
+  viewX = dragViewX + (e.clientX - dragStartX);
+  viewY = dragViewY + (e.clientY - dragStartY);
+  applyTransform();
+});
+window.addEventListener('mouseup', function(){ isDragging = false; });
+svg.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  zoom(e.deltaY < 0 ? 1.1 : 0.9);
+}, { passive: false });
+
+function selectUC(id) {
+  currentSelection = { type: 'uc', id: id };
+  updateMap(); updateSidebar();
+  if (id === 'all') { hideDetail(); } else { showUCDetail(id); }
+}
+
+function selectCTX(id) {
+  currentSelection = { type: 'ctx', id: id };
+  updateMap(); updateSidebar(); showCTXDetail(id);
+}
+
+function updateSidebar() {
+  document.querySelectorAll('.uc-btn').forEach(function(b){ b.classList.remove('active'); });
+  if (!currentSelection) return;
+  var type = currentSelection.type, id = currentSelection.id;
+  if (type === 'uc') { var el = document.querySelector('[data-uc="' + id + '"]'); if (el) el.classList.add('active'); }
+  else { var el = document.querySelector('[data-ctx="' + id + '"]'); if (el) el.classList.add('active'); }
+}
+
+function updateMap() {
+  var allCtx = ['registry','indexing','storage','retrieval','gateway'];
+  var allEdges = ['e-reg-idx','e-idx-sto','e-sto-ret','e-ret-gw','e-gw-ext','e-reg-gw','e-idx-ret'];
+  if (!currentSelection || currentSelection.id === 'all') {
+    allCtx.forEach(function(id){ var el = document.getElementById('ctx-' + id); if (el) el.classList.remove('active','dim'); });
+    allEdges.forEach(function(id){ var el = document.getElementById(id); if (el) el.classList.remove('active','dim'); });
+    return;
+  }
+  var type = currentSelection.type, id = currentSelection.id;
+  var activeCtx = [], activeEdges = [];
+  if (type === 'uc' && USE_CASES[id]) {
+    activeCtx = USE_CASES[id].contexts; activeEdges = USE_CASES[id].edges;
+  } else if (type === 'ctx') {
+    activeCtx = [id];
+    var edgeMap = {
+      registry: ['e-reg-idx','e-reg-gw'], indexing: ['e-reg-idx','e-idx-sto','e-idx-ret'],
+      storage: ['e-idx-sto','e-sto-ret'], retrieval: ['e-sto-ret','e-ret-gw','e-idx-ret'],
+      gateway: ['e-ret-gw','e-gw-ext','e-reg-gw']
+    };
+    activeEdges = edgeMap[id] || [];
+  }
+  allCtx.forEach(function(ctxId){
+    var el = document.getElementById('ctx-' + ctxId); if (!el) return;
+    el.classList.remove('active','dim');
+    el.classList.add(activeCtx.indexOf(ctxId) >= 0 ? 'active' : 'dim');
+  });
+  allEdges.forEach(function(eId){
+    var el = document.getElementById(eId); if (!el) return;
+    el.classList.remove('active','dim');
+    el.classList.add(activeEdges.indexOf(eId) >= 0 ? 'active' : 'dim');
+  });
+}
+
+function hideDetail() { document.getElementById('detail-panel').classList.add('hidden'); }
+
+function showUCDetail(id) {
+  var uc = USE_CASES[id]; if (!uc) return;
+  var ctxTagsHtml = uc.contexts.map(function(c){
+    var d = CTX_DATA[c];
+    return '<span class="ctx-tag" style="background:' + d.color + '22;color:' + d.color + ';border:1px solid ' + d.color + '44">' + d.title + '</span>';
+  }).join('');
+  var stepsHtml = uc.steps.map(function(s,i){
+    return '<li><span class="step-num" style="background:' + uc.color + '33;color:' + uc.color + '">' + (i+1) + '</span><span>' + s + '</span></li>';
+  }).join('');
+  var patternsHtml = uc.patterns.map(function(p){
+    return '<li><strong>' + p.name + '</strong> — ' + p.desc + '</li>';
+  }).join('');
+  document.getElementById('detail-inner').innerHTML =
+    '<div class="detail-header"><div class="detail-dot" style="background:' + uc.color + '"></div>' +
+    '<div><div class="detail-title">' + uc.id + ' — ' + uc.title + '</div>' +
+    '<div class="detail-sub">Trigger: ' + uc.trigger + '</div></div>' +
+    '<button class="close-btn" onclick="selectUC(\'all\')">&#x2715;</button></div>' +
+    '<div class="detail-section"><h4>Involved Contexts</h4><div class="ctx-tags">' + ctxTagsHtml + '</div></div>' +
+    '<div class="detail-section"><h4>Flow</h4><ol class="step-list">' + stepsHtml + '</ol></div>' +
+    '<div class="detail-section"><h4>DDD Patterns</h4><ul class="pattern-list">' + patternsHtml + '</ul></div>';
+  document.getElementById('detail-panel').classList.remove('hidden');
+}
+
+function showCTXDetail(id) {
+  var ctx = CTX_DATA[id]; if (!ctx) return;
+  var entitiesHtml = ctx.entities.map(function(e){ return '<li style="margin-bottom:6px;font-size:13px">' + e + '</li>'; }).join('');
+  var filesHtml = ctx.files.map(function(f){ return '<li style="margin-bottom:4px;font-size:12px;font-family:monospace;color:#a5b4fc">' + f + '</li>'; }).join('');
+  var containersHtml = ctx.containers.map(function(c){ return '<li style="margin-bottom:4px;font-size:12px;font-family:monospace;color:#6ee7b7">' + c + '</li>'; }).join('');
+  document.getElementById('detail-inner').innerHTML =
+    '<div class="detail-header"><div class="detail-dot" style="background:' + ctx.color + '"></div>' +
+    '<div><div class="detail-title">' + ctx.title + '</div><div class="detail-sub">' + ctx.subtitle + '</div></div>' +
+    '<button class="close-btn" onclick="selectUC(\'all\')">&#x2715;</button></div>' +
+    '<div class="detail-section"><p style="font-size:13px;color:var(--text-muted);line-height:1.6">' + ctx.description + '</p></div>' +
+    '<div class="detail-section"><h4>Key Entities &amp; Value Objects</h4><ul class="step-list">' + entitiesHtml + '</ul></div>' +
+    '<div class="detail-section"><h4>Source Files</h4><ul style="list-style:none">' + filesHtml + '</ul></div>' +
+    '<div class="detail-section"><h4>Containers</h4><ul style="list-style:none">' + containersHtml + '</ul></div>';
+  document.getElementById('detail-panel').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

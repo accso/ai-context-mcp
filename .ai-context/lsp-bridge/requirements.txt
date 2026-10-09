@@ -1,0 +1,18 @@
+fastapi==0.137.0
+uvicorn[standard]==0.49.0
+# multilspy — thin LSP JSON-RPC client wrapping per-language server
+# subclasses (TypeScript, Python, Go, Rust, C#, Kotlin, ...).
+# MIT licensed. Chosen over hand-rolled JSON-RPC after an initial spike
+# (see docs/lsp-integration.md) — verified correct
+# definition/references/hover results against this repo's own
+# mcp-server/src/db.ts.
+multilspy==0.0.15
+# multilspy 0.0.15 backs Language.PYTHON with jedi-language-server (NOT
+# pyright — see the per-language support matrix in docs/lsp-integration.md).
+# multilspy declares this as an unbounded
+# dependency, so it's pinned explicitly here too for the same
+# reproducibility reason multilspy itself is pinned. Verified working
+# end-to-end (definition request) against this repo's own
+# watcher/l0_generator.py.
+jedi-language-server==0.41.3
+

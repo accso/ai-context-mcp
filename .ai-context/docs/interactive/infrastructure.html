@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Context — Infrastructure Map</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --border: #2e3347; --text: #e2e8f0; --text-muted: #8892a4; --accent: #6366f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 24px 0; display: flex; flex-direction: column; flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; gap: 16px; padding-bottom: 6px; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header p { font-size: 12px; color: var(--text-muted); }
+  .tab-nav { display: flex; gap: 2px; }
+  .tab-nav a { display: inline-block; padding: 7px 15px; font-size: 13px; font-weight: 500; background: none; border-bottom: 2px solid transparent; color: var(--text-muted); text-decoration: none; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .tab-nav a:hover { color: var(--text); }
+  .tab-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .canvas-wrap { flex: 1; overflow: auto; background: var(--bg); position: relative; }
+  .canvas-wrap svg { min-width: 910px; min-height: 500px; width: 100%; height: 100%; }
+  .infra-box { fill: var(--surface); transition: filter .15s; }
+  .infra-group { cursor: pointer; }
+  .infra-group:hover .infra-box { filter: brightness(1.35); }
+  .infra-group.selected .infra-box { filter: brightness(1.5); }
+  .detail { width: 320px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; transition: width .25s; }
+  .detail.hidden { width: 0; overflow: hidden; }
+  .detail-inner { padding: 20px; min-width: 320px; }
+  .detail-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .detail-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 14px; }
+  .detail-section { margin-top: 14px; }
+  .detail-section h4 { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .detail-section p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .mono-list { list-style: none; }
+  .mono-list li { font-size: 12px; font-family: monospace; color: #a5b4fc; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .close-btn { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 0 4px; float: right; }
+  .close-btn:hover { color: var(--text); }
+  .tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>AI Context — Infrastructure Map</h1>
+      <p>Docker containers, networking, ports, and data flow</p>
+    </div>
+  </div>
+  <nav class="tab-nav">
+    <a href="overview.html">Overview</a>
+    <a href="context-map.html">Context Map</a>
+    <a href="infrastructure.html" class="active">Infrastructure</a>
+    <a href="sequences.html">Sequences</a>
+    <a href="chunking.html">Chunking Strategy</a>
+  </nav>
+</header>
+
+<div class="main">
+  <div class="canvas-wrap">
+    <svg viewBox="0 0 910 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-o" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#d97706"/></marker>
+        <marker id="arr-g" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#059669"/></marker>
+        <marker id="arr-r" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#dc2626"/></marker>
+        <marker id="arr-c" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#0891b2"/></marker>
+        <marker id="arr-b" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#2563eb"/></marker>
+      </defs>
+
+      <!-- Zone labels -->
+      <text x="115" y="16" text-anchor="middle" font-size="10" font-weight="700" fill="#475569" letter-spacing="1.5">SHARED SERVICES</text>
+      <text x="460" y="16" text-anchor="middle" font-size="10" font-weight="700" fill="#475569" letter-spacing="1.5">PER-PROJECT CONTAINERS</text>
+      <text x="820" y="16" text-anchor="middle" font-size="10" font-weight="700" fill="#475569" letter-spacing="1.5">EXTERNAL</text>
+
+      <!-- Shared services background -->
+      <rect x="10" y="24" width="215" height="300" rx="10" fill="#1a1d27" stroke="#2e3347" stroke-width="1.5"/>
+
+      <!-- PostgreSQL -->
+      <g id="ig-postgres" class="infra-group" onclick="showDetail('postgres')">
+        <rect class="infra-box" x="22" y="54" width="191" height="56" rx="8" stroke="#d97706" stroke-width="1.5"/>
+        <rect x="22" y="54" width="191" height="20" rx="8" fill="#d97706" opacity="0.2"/>
+        <rect x="22" y="66" width="191" height="8" fill="#d97706" opacity="0.2"/>
+        <text x="34" y="70" font-size="11" font-weight="700" fill="#fbbf24">ai_context_postgres</text>
+        <text x="34" y="88" font-size="11" fill="#8892a4">PostgreSQL 15  ·  alpine</text>
+        <rect x="172" y="62" width="32" height="15" rx="4" fill="#d97706" opacity="0.35"/>
+        <text x="188" y="73" text-anchor="middle" font-size="10" font-weight="700" fill="#fbbf24">:5432</text>
+      </g>
+
+      <!-- Qdrant -->
+      <g id="ig-qdrant" class="infra-group" onclick="showDetail('qdrant')">
+        <rect class="infra-box" x="22" y="136" width="191" height="56" rx="8" stroke="#059669" stroke-width="1.5"/>
+        <rect x="22" y="136" width="191" height="20" rx="8" fill="#059669" opacity="0.2"/>
+        <rect x="22" y="148" width="191" height="8" fill="#059669" opacity="0.2"/>
+        <text x="34" y="152" font-size="11" font-weight="700" fill="#6ee7b7">ai_context_qdrant</text>
+        <text x="34" y="170" font-size="11" fill="#8892a4">Qdrant 1.x  ·  768-dim cosine</text>
+        <rect x="172" y="144" width="32" height="15" rx="4" fill="#059669" opacity="0.35"/>
+        <text x="188" y="155" text-anchor="middle" font-size="10" font-weight="700" fill="#6ee7b7">:6333</text>
+      </g>
+
+      <!-- Inference Service (mandatory — embeddings + re-ranking) -->
+      <g id="ig-reranker" class="infra-group" onclick="showDetail('reranker')">
+        <rect class="infra-box" x="22" y="230" width="191" height="56" rx="8" stroke="#0891b2" stroke-width="1.5"/>
+        <rect x="22" y="230" width="191" height="20" rx="8" fill="#0891b2" opacity="0.15"/>
+        <rect x="22" y="242" width="191" height="8" fill="#0891b2" opacity="0.15"/>
+        <text x="34" y="246" font-size="11" font-weight="700" fill="#67e8f9">ai_context_inference</text>
+        <text x="34" y="264" font-size="11" fill="#8892a4">FastEmbed embed + ColBERT rerank  ·  mandatory</text>
+        <rect x="172" y="238" width="32" height="15" rx="4" fill="#0891b2" opacity="0.25"/>
+        <text x="188" y="249" text-anchor="middle" font-size="10" font-weight="700" fill="#67e8f9">:8080</text>
+      </g>
+
+      <!-- Per-project background -->
+      <rect x="240" y="24" width="445" height="300" rx="10" fill="#1a1d27" stroke="#2e3347" stroke-width="1.5"/>
+
+      <!-- demo-app project group -->
+      <rect x="252" y="50" width="200" height="200" rx="8" fill="#0f1117" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <rect x="252" y="50" width="200" height="22" rx="8" fill="#6366f1" opacity="0.2"/>
+      <text x="352" y="66" text-anchor="middle" font-size="12" font-weight="700" fill="#a5b4fc">demo-app</text>
+
+      <!-- watcher demo -->
+      <g id="ig-watcher" class="infra-group" onclick="showDetail('watcher')">
+        <rect class="infra-box" x="262" y="85" width="180" height="52" rx="8" stroke="#2563eb" stroke-width="1.5"/>
+        <rect x="262" y="85" width="180" height="18" rx="8" fill="#2563eb" opacity="0.2"/>
+        <rect x="262" y="96" width="180" height="7" fill="#2563eb" opacity="0.2"/>
+        <text x="274" y="100" font-size="10" font-weight="700" fill="#93c5fd">ai_context_watcher</text>
+        <text x="274" y="116" font-size="10" fill="#8892a4">File watcher · indexer · Python</text>
+      </g>
+
+      <!-- mcp demo -->
+      <g id="ig-mcp" class="infra-group" onclick="showDetail('mcp')">
+        <rect class="infra-box" x="262" y="163" width="180" height="52" rx="8" stroke="#dc2626" stroke-width="1.5"/>
+        <rect x="262" y="163" width="180" height="18" rx="8" fill="#dc2626" opacity="0.2"/>
+        <rect x="262" y="174" width="180" height="7" fill="#dc2626" opacity="0.2"/>
+        <text x="274" y="178" font-size="10" font-weight="700" fill="#fca5a5">ai_context_mcp</text>
+        <text x="274" y="194" font-size="10" fill="#8892a4">MCP Server · Node.js · :3000</text>
+        <rect x="408" y="170" width="28" height="14" rx="4" fill="#dc2626" opacity="0.35"/>
+        <text x="422" y="181" text-anchor="middle" font-size="9" font-weight="700" fill="#fca5a5">:3000</text>
+      </g>
+
+      <!-- other-proj group -->
+      <rect x="472" y="50" width="200" height="200" rx="8" fill="#0f1117" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <rect x="472" y="50" width="200" height="22" rx="8" fill="#6366f1" opacity="0.2"/>
+      <text x="572" y="66" text-anchor="middle" font-size="12" font-weight="700" fill="#a5b4fc">other-proj</text>
+
+      <!-- watcher other -->
+      <g class="infra-group" onclick="showDetail('watcher')">
+        <rect class="infra-box" x="482" y="85" width="180" height="52" rx="8" stroke="#2563eb" stroke-width="1.5"/>
+        <rect x="482" y="85" width="180" height="18" rx="8" fill="#2563eb" opacity="0.2"/>
+        <rect x="482" y="96" width="180" height="7" fill="#2563eb" opacity="0.2"/>
+        <text x="494" y="100" font-size="10" font-weight="700" fill="#93c5fd">ai_context_watcher</text>
+        <text x="494" y="116" font-size="10" fill="#8892a4">File watcher · indexer · Python</text>
+      </g>
+
+      <!-- mcp other -->
+      <g class="infra-group" onclick="showDetail('mcp')">
+        <rect class="infra-box" x="482" y="163" width="180" height="52" rx="8" stroke="#dc2626" stroke-width="1.5"/>
+        <rect x="482" y="163" width="180" height="18" rx="8" fill="#dc2626" opacity="0.2"/>
+        <rect x="482" y="174" width="180" height="7" fill="#dc2626" opacity="0.2"/>
+        <text x="494" y="178" font-size="10" font-weight="700" fill="#fca5a5">ai_context_mcp</text>
+        <text x="494" y="194" font-size="10" fill="#8892a4">MCP Server · Node.js · :3001</text>
+        <rect x="628" y="170" width="28" height="14" rx="4" fill="#dc2626" opacity="0.35"/>
+        <text x="642" y="181" text-anchor="middle" font-size="9" font-weight="700" fill="#fca5a5">:3001</text>
+      </g>
+
+      <!-- N projects label -->
+      <text x="352" y="273" text-anchor="middle" font-size="11" fill="#475569">+ N more projects</text>
+      <text x="572" y="273" text-anchor="middle" font-size="11" fill="#475569">(same pattern)</text>
+
+      <!-- External background -->
+      <rect x="700" y="24" width="200" height="300" rx="10" fill="#1a1d27" stroke="#475569" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <g id="ig-ide" class="infra-group" onclick="showDetail('ide')">
+        <text fill="#8892a4" font-size="11" font-weight="700" text-anchor="middle" transform="translate(800,170) rotate(-90)">IDE / GitHub Copilot / Claude</text>
+      </g>
+      <text x="800" y="300" text-anchor="middle" font-size="10" fill="#475569">MCP client</text>
+
+      <!-- CONNECTIONS -->
+
+      <!-- watcher_demo → postgres (writes file_index, symbols) -->
+      <path d="M262,111 L242,111 L242,82 L213,82" fill="none" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr-o)"/>
+      <text x="247" y="100" font-size="9" fill="#d97706">writes idx</text>
+
+      <!-- watcher_demo → qdrant (upserts vectors) -->
+      <path d="M262,120 L236,120 L236,164 L213,164" fill="none" stroke="#059669" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <text x="238" y="147" font-size="9" fill="#059669">upserts</text>
+
+      <!-- mcp_demo → qdrant (vector search · get chunks by file) -->
+      <path d="M262,189 L232,189 L232,164 L213,164" fill="none" stroke="#059669" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+      <!-- mcp_demo → postgres (L0 · L1 · symbol_index reads) -->
+      <path d="M262,180 L223,180 L223,82 L213,82" fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-o)"/>
+
+      <!-- mcp_demo → inference (embeddings + rerank) -->
+      <path d="M262,197 L219,197 L219,258 L213,258" fill="none" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-c)"/>
+
+      <!-- mcp_demo → IDE -->
+      <path d="M442,200 Q570,255 700,240" fill="none" stroke="#dc2626" stroke-width="2" marker-end="url(#arr-r)"/>
+
+      <!-- mcp_other → IDE -->
+      <path d="M662,189 Q680,189 700,225" fill="none" stroke="#dc2626" stroke-width="2" marker-end="url(#arr-r)"/>
+
+      <!-- other-proj same shared connections (dimmed indicator) -->
+      <path d="M482,111 L462,111 L462,120 L440,120" fill="none" stroke="#2e3347" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="410" y="116" font-size="9" fill="#475569">same</text>
+
+      <!-- Legend -->
+      <rect x="10" y="415" width="215" height="100" rx="8" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="20" y="433" font-size="11" font-weight="700" fill="#8892a4">Connections</text>
+      <line x1="20" y1="447" x2="44" y2="447" stroke="#d97706" stroke-width="2"/>
+      <text x="50" y="451" font-size="10" fill="#8892a4">PostgreSQL (index writes / reads)</text>
+      <line x1="20" y1="463" x2="44" y2="463" stroke="#059669" stroke-width="2"/>
+      <text x="50" y="467" font-size="10" fill="#8892a4">Qdrant (vector upsert / search)</text>
+      <line x1="20" y1="479" x2="44" y2="479" stroke="#dc2626" stroke-width="2"/>
+      <text x="50" y="483" font-size="10" fill="#8892a4">MCP protocol to IDE</text>
+      <line x1="20" y1="495" x2="44" y2="495" stroke="#0891b2" stroke-width="2" stroke-dasharray="4,3"/>
+      <text x="50" y="499" font-size="10" fill="#8892a4">Inference Service (embeddings + rerank)</text>
+
+    </svg>
+  </div>
+
+  <aside class="detail hidden" id="detail-panel">
+    <div class="detail-inner" id="detail-inner">
+      <p style="color:var(--text-muted);font-size:13px;padding:20px 0">Click any container to see details.</p>
+    </div>
+  </aside>
+</div>
+
+<script>
+var INFRA = {
+  postgres: {
+    title: 'ai_context_postgres', type: 'Shared Service', color: '#d97706',
+    desc: 'Central PostgreSQL 16 instance shared across all projects. Stores all relational metadata: file indexes, LLM summaries, symbol tables, L0 maps, doc trees, and the call/import graph (import_edges, call_edges) backing analyze_impact and repo_structure\'s [hub]/[bridge] structural-role tags. Most tables have a project_key foreign key with ON DELETE CASCADE — doc_trees is an exception, storing project_key as a plain (unconstrained) text column.',
+    port: '5433 (host) -> 5432 (container)',
+    items: ['Image: postgres:16-alpine', 'Volume: ai_context_postgres_data (external, persistent)', 'Tables: projects, file_index, l1_summaries, symbol_index, l0_maps, doc_trees, import_edges, call_edges', 'Most FKs: ON DELETE CASCADE from project_key — except doc_trees, which has no FK constraint on project_key']
+  },
+  qdrant: {
+    title: 'ai_context_qdrant', type: 'Shared Service', color: '#059669',
+    desc: 'Shared Qdrant vector database storing L2 code chunks. Each project gets its own named collection (collection name is exactly the project_key). Stores chunk embeddings with cosine distance metric — dimension is fixed by the inference service\'s hardcoded embedding model (this repo currently runs 768-dim nomic-embed-text-v1.5). Points use stable UUID v5 IDs for efficient delta updates.',
+    port: '6333 (REST), 6334 (gRPC)',
+    items: ['Image: qdrant/qdrant:v1.18.2', 'Volume: ai_context_qdrant_data (external, persistent)', 'Collections: <project_key> (no prefix)', 'Vector size: fixed by the inference service\'s hardcoded embedding model (768 for this repo\'s nomic-embed-text-v1.5)', 'Payload: path, text, start_line, end_line, chunk_type']
+  },
+  reranker: {
+    title: 'ai_context_inference', type: 'Shared Service (Mandatory)', color: '#0891b2',
+    desc: 'Embeddings + re-ranking, both backed by FastEmbed/onnxruntime (no torch, no LM Studio/omlx dependency for either). Embeddings: nomic-embed-text-v1.5 (hardcoded, not config.yaml). Re-ranking: ColBERT MaxSim late-interaction re-ranking (default) or a lightweight cross-encoder (build-time alternative) — improves retrieval quality by re-scoring Qdrant candidates at the token level. Always started alongside Qdrant/PostgreSQL — no longer an opt-in config.yaml toggle.',
+    port: 'Internal only (8080, no host port exposed)',
+    items: ['Mandatory: always started, part of the same always-on infra tier as Qdrant/PostgreSQL', 'POST /embeddings: nomic-embed-text-v1.5 (input_type=query|document for correct task-prefixing)', 'colbert backend (default): answerdotai/answerai-colbert-small-v1 (FastEmbed, MaxSim scoring)', 'cross-encoder backend (build-time alternative): Xenova/ms-marco-MiniLM-L-6-v2', 'Backend/model fixed via Docker build ARGs, not a config.yaml field', 'Output: re-ranked list by backend score']
+  },
+  watcher: {
+    title: '<repo-slug>_context_watcher', type: 'Consolidated Repo Container', color: '#2563eb',
+    desc: 'Python file watcher and indexer — one container for the whole repository, with one independent watchdog task per project. Monitors each project source tree for changes using Watchdog (inotify / kqueue). On startup runs self-healing reconciliation for every project before beginning live watching; aborts before destructive work if the configured LLM model is unreachable (embeddings are no longer part of this check — the inference service is mandatory, always-on infra with its own container healthcheck).',
+    port: 'Internal only',
+    items: ['Image: Custom Python (Dockerfile.watcher)', 'Capabilities: one watchdog task per project, debounce 2s', 'Language-aware regex chunking (16 languages: Kotlin, Java, C#, Swift, TS/TSX, JS/JSX, Python, Go, Rust, Ruby, PHP, C/C++, Vue, Markdown, SQL, YAML/TOML)', 'tree-sitter symbol extraction (8 languages) + chunker-derived symbol_index fallback for the rest', 'Dispatch-arm (switch/when/match) sub-chunking, chunk_type="case"', 'Embedding via the shared, mandatory inference service (hardcoded model, not user-configured)', 'LLM L1 summary generation (SHA-keyed cache)', 'L0 project map generation', 'Eligibility filter: should_skip() — hardcoded skips + extra_skip_paths + merged .gitignore (own + extra_gitignore_paths) + auto-excluded backup_output_dir', 'Self-healing reconciliation on startup + periodic reconcile (every 30 min, configurable)', 'Model guard: aborts destructive indexing if LLM is unreachable']
+  },
+  mcp: {
+    title: '<repo-slug>_context_mcp', type: 'Consolidated Repo Container', color: '#dc2626',
+    desc: 'TypeScript/Node.js MCP server — one container for the whole repository, spawning one independent Express app per project, each on its own port. Exposes 5 agent-facing tools on /mcp endpoint via StreamableHTTP — no LLM in the retrieval path: repo_structure, semantic_search, get_file, analyze_impact (call/import graph blast-radius), resolve_symbol (real LSP definition/references/hover via the companion ai_context_lsp container). 2 operator-only diagnostics on /mcp-admin. Delivers per-project instructions at MCP initialize handshake.',
+    port: 'One port per project (config.yaml mcp.port)',
+    items: ['Image: Custom Node.js (Dockerfile.mcp-server)', 'One Express app per project, own port', '5 tools on /mcp: repo_structure, semantic_search, get_file, analyze_impact, resolve_symbol', '2 tools on /mcp-admin: list_recent_changes, get_index_status', 'No LLM in the retrieval path — the calling agent is the only reasoning entity']
+  },
+  lsp: {
+    title: '<repo-slug>_context_lsp', type: 'Consolidated Repo Container (one per repo, not per project)', color: '#7c3aed',
+    desc: 'Python/FastAPI LSP Bridge — one container for the whole repository (like the watcher), running real language servers (e.g. typescript-language-server, multilspy-backed servers for other languages) in a lazy per-(project, language) process pool. Backs the MCP server\'s resolve_symbol tool with compiler-grade definition/references/hover results the heuristic call graph can\'t provide. Which languages are available is auto-detected per project from its own files — never a hand-set config.yaml field.',
+    port: 'Internal only (no host port exposed) — reached by ai_context_mcp over the Docker network',
+    items: ['Image: Custom Python (Dockerfile.lsp-bridge)', 'POST /resolve, GET /health', 'Lazy per-(project_key, language) language-server process pool', 'Idle-evicted after lsp.idle_timeout_minutes (default 15)', 'Languages auto-detected per project — lsp.enabled_languages is never a config.yaml field']
+  },
+  ide: {
+    title: 'IDE / GitHub Copilot', type: 'External System', color: '#475569',
+    desc: 'The developer IDE (VS Code, Cursor, JetBrains, etc.) with an AI assistant (GitHub Copilot, Claude, etc.). Connects to MCP servers via StreamableHTTP protocol and drives its own retrieval loop over all 5 agent-facing tools (repo_structure, semantic_search, get_file, analyze_impact, resolve_symbol).',
+    port: 'Connects to configured project ports',
+    items: ['Protocol: MCP (Model Context Protocol)', 'Endpoint: /mcp per project', 'Tools used: repo_structure, semantic_search(query), get_file(file_path), analyze_impact(symbol_name, direction), resolve_symbol(file_path, line, character, kind)', 'Config: any path configured in shared.mcp_config_paths (default: .vscode/mcp.json and GitHub Copilot settings)', 'Registration: automatic via mise run ai-context-up']
+  }
+};
+
+function showDetail(id) {
+  var d = INFRA[id]; if (!d) return;
+  document.querySelectorAll('.infra-group').forEach(function(g){ g.classList.remove('selected'); });
+  var el = document.getElementById('ig-' + id);
+  if (el) el.classList.add('selected');
+  var itemsHtml = d.items.map(function(i){ return '<li>' + i + '</li>'; }).join('');
+  document.getElementById('detail-inner').innerHTML =
+    '<button class="close-btn" onclick="closeDetail()">&#x2715;</button>' +
+    '<div style="margin-bottom:8px"><span class="tag" style="background:' + d.color + '22;color:' + d.color + ';border:1px solid ' + d.color + '44">' + d.type + '</span></div>' +
+    '<div class="detail-title">' + d.title + '</div>' +
+    '<div class="detail-sub">Port: ' + d.port + '</div>' +
+    '<div class="detail-section"><p>' + d.desc + '</p></div>' +
+    '<div class="detail-section"><h4>Details</h4><ul class="mono-list">' + itemsHtml + '</ul></div>';
+  document.getElementById('detail-panel').classList.remove('hidden');
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.add('hidden');
+  document.querySelectorAll('.infra-group').forEach(function(g){ g.classList.remove('selected'); });
+}
+</script>
+</body>
+</html>

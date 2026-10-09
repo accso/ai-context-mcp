@@ -1,0 +1,11 @@
+qdrant-client==1.18.0
+psycopg2-binary==2.9.12
+pyyaml==6.0.3
+watchdog==6.0.0
+pathspec==1.1.1
+httpx==0.28.1
+# AST/symbol index — pre-compiled tree-sitter grammars for Python/TS/JS/Java/Kotlin/C#/Swift
+# tree-sitter-languages 1.10.2 uses the old Language(path, name) API → must pin tree-sitter to 0.21.x
+# tree-sitter 0.22+ changed the constructor; 0.25+ removed the old form entirely
+tree-sitter==0.21.3
+tree-sitter-languages==1.10.2

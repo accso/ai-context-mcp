@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Context — Chunking Strategy</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --border: #2e3347; --text: #e2e8f0; --text-muted: #8892a4; --accent: #6366f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 24px 0; display: flex; flex-direction: column; flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; gap: 16px; padding-bottom: 6px; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header p { font-size: 12px; color: var(--text-muted); }
+  .tab-nav { display: flex; gap: 2px; }
+  .tab-nav a { display: inline-block; padding: 7px 15px; font-size: 13px; font-weight: 500; background: none; border-bottom: 2px solid transparent; color: var(--text-muted); text-decoration: none; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .tab-nav a:hover { color: var(--text); }
+  .tab-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .chunk-sidebar { width: 190px; background: var(--surface); border-right: 1px solid var(--border); padding: 14px 12px; overflow-y: auto; flex-shrink: 0; }
+  .chunk-sidebar h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+  .lang-btn { display: block; width: 100%; padding: 7px 10px; margin-bottom: 5px; background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); cursor: pointer; text-align: left; font-size: 11px; transition: background .12s, color .12s, border-color .12s; }
+  .lang-btn:hover { background: var(--surface2); color: var(--text); }
+  .lang-btn.active { border-color: var(--accent); color: var(--text); background: var(--surface2); }
+  .lang-btn .lang-group { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 1px; }
+  .canvas-wrap { flex: 1; overflow: auto; background: var(--bg); }
+  .canvas-wrap svg { min-width: 1060px; display: block; }
+  .path-highlight { opacity: 0; transition: opacity .3s; }
+  .path-highlight.active { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>AI Context — Chunking Strategy</h1>
+      <p>Language detection, AST boundaries, and storage routing for each file type</p>
+    </div>
+  </div>
+  <nav class="tab-nav">
+    <a href="overview.html">Overview</a>
+    <a href="context-map.html">Context Map</a>
+    <a href="infrastructure.html">Infrastructure</a>
+    <a href="sequences.html">Sequences</a>
+    <a href="chunking.html" class="active">Chunking Strategy</a>
+  </nav>
+</header>
+
+<div class="main">
+  <aside class="chunk-sidebar">
+    <h3>Highlight Path</h3>
+    <button class="lang-btn" data-path="ast" onclick="highlight('ast')">
+      <span class="lang-group">Structural Languages</span>
+      Kotlin · Java · TS/JS · Python · C# · Swift · Vue · Go · Rust · Ruby · PHP · C/C++
+    </button>
+    <button class="lang-btn" data-path="md-large" onclick="highlight('md-large')">
+      <span class="lang-group">Markdown</span>
+      Large file (&gt;threshold)
+    </button>
+    <button class="lang-btn" data-path="md-small" onclick="highlight('md-small')">
+      <span class="lang-group">Markdown</span>
+      Small file
+    </button>
+    <button class="lang-btn" data-path="sql" onclick="highlight('sql')">
+      <span class="lang-group">SQL</span>
+      .sql files
+    </button>
+    <button class="lang-btn" data-path="yaml" onclick="highlight('yaml')">
+      <span class="lang-group">Config</span>
+      YAML · TOML
+    </button>
+    <button class="lang-btn" data-path="other" onclick="highlight('other')">
+      <span class="lang-group">Other</span>
+      Everything else
+    </button>
+    <button class="lang-btn" style="margin-top:8px;border-color:var(--border)" onclick="highlight(null)">
+      <span class="lang-group">Reset</span>Show all paths
+    </button>
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.7">
+      <strong style="color:var(--text)">L1 Summaries</strong> (LLM, SHA-keyed) and <strong style="color:var(--text)">L0 Map</strong> (no LLM) apply to <em>all</em> file types. Code-mode files produce <strong style="color:var(--text)">L2 Code Chunks</strong> — embedded in Qdrant for semantic search.
+    </div>
+  </aside>
+
+  <div class="canvas-wrap">
+    <svg viewBox="0 0 1060 624" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ca" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#475569"/></marker>
+        <marker id="ca-ast" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#2563eb"/></marker>
+        <marker id="ca-mdl" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#7c3aed"/></marker>
+        <marker id="ca-mds" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#0891b2"/></marker>
+        <marker id="ca-sql" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#d97706"/></marker>
+        <marker id="ca-yaml" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#059669"/></marker>
+        <marker id="ca-oth" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#dc2626"/></marker>
+      </defs>
+
+      <!-- ── COLUMN HEADERS ── -->
+      <text x="110" y="14" text-anchor="middle" font-size="9" fill="#475569" font-weight="700" letter-spacing="1.2">FILE TYPE</text>
+      <text x="310" y="14" text-anchor="middle" font-size="9" fill="#475569" font-weight="700" letter-spacing="1.2">CHUNKING METHOD</text>
+      <text x="560" y="14" text-anchor="middle" font-size="9" fill="#475569" font-weight="700" letter-spacing="1.2">EMBEDDING</text>
+      <text x="760" y="14" text-anchor="middle" font-size="9" fill="#475569" font-weight="700" letter-spacing="1.2">STORAGE</text>
+      <text x="960" y="14" text-anchor="middle" font-size="9" fill="#475569" font-weight="700" letter-spacing="1.2">EXTRA</text>
+
+      <!-- Column guide lines -->
+      <line x1="220" y1="20" x2="220" y2="570" stroke="#2e3347" stroke-width="1" stroke-dasharray="2,4"/>
+      <line x1="440" y1="20" x2="440" y2="570" stroke="#2e3347" stroke-width="1" stroke-dasharray="2,4"/>
+      <line x1="650" y1="20" x2="650" y2="570" stroke="#2e3347" stroke-width="1" stroke-dasharray="2,4"/>
+      <line x1="865" y1="20" x2="865" y2="570" stroke="#2e3347" stroke-width="1" stroke-dasharray="2,4"/>
+
+      <!-- ══════════ ROW 1: AST Languages ══════════ -->
+      <g id="ph-ast-g">
+
+      <!-- File type box -->
+      <rect x="10" y="32" width="200" height="84" rx="8" fill="#1a1d27" stroke="#2563eb" stroke-width="1.5"/>
+      <rect x="10" y="32" width="200" height="22" rx="8" fill="#2563eb" opacity="0.25"/>
+      <rect x="10" y="46" width="200" height="8" fill="#2563eb" opacity="0.25"/>
+      <text x="110" y="47" text-anchor="middle" font-size="11" font-weight="700" fill="#93c5fd">Structural Languages</text>
+      <text x="110" y="65" text-anchor="middle" font-size="9.5" fill="#8892a4">Kotlin · Java · TS/TSX · JS/JSX</text>
+      <text x="110" y="78" text-anchor="middle" font-size="9.5" fill="#8892a4">Python · C# · Swift · Vue SFC</text>
+      <text x="110" y="91" text-anchor="middle" font-size="9.5" fill="#8892a4">Go · Rust · Ruby · PHP · C/C++</text>
+      <text x="110" y="108" text-anchor="middle" font-size="9" fill="#8892a4">(16 languages — own regex boundaries each)</text>
+
+      <!-- Arrow -->
+      <line x1="210" y1="74" x2="228" y2="74" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ca-ast)"/>
+
+      <!-- Chunking method -->
+      <rect x="233" y="38" width="200" height="72" rx="8" fill="#1a1d27" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="333" y="56" text-anchor="middle" font-size="11" font-weight="700" fill="#93c5fd">Tree-sitter or regex boundaries</text>
+      <text x="333" y="72" text-anchor="middle" font-size="10" fill="#8892a4">Java/C#/TS/TSX: tree-sitter AST</text>
+      <text x="333" y="86" text-anchor="middle" font-size="10" fill="#8892a4">boundaries (v7); rest: per-language</text>
+      <text x="333" y="100" text-anchor="middle" font-size="10" fill="#8892a4">regex extracts — stable UUIDs</text>
+
+      <!-- Arrow -->
+      <line x1="433" y1="74" x2="450" y2="74" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ca-ast)"/>
+
+      <!-- Embedding -->
+      <rect x="455" y="55" width="190" height="38" rx="8" fill="#1a1d27" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="550" y="70" text-anchor="middle" font-size="11" font-weight="700" fill="#93c5fd">Embed (dimension = fixed)</text>
+      <text x="550" y="84" text-anchor="middle" font-size="10" fill="#8892a4">inference service — FastEmbed (768 in this repo)</text>
+
+      <!-- Arrow -->
+      <line x1="645" y1="74" x2="663" y2="74" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ca-ast)"/>
+
+      <!-- Storage -->
+      <rect x="668" y="38" width="185" height="30" rx="6" fill="#059669" opacity="0.25" stroke="#059669" stroke-width="1"/>
+      <text x="760" y="57" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">Qdrant collection</text>
+
+      <line x1="760" y1="68" x2="760" y2="76"/>
+      <rect x="668" y="77" width="185" height="30" rx="6" fill="#2563eb" opacity="0.2" stroke="#2563eb" stroke-width="1"/>
+      <text x="760" y="96" text-anchor="middle" font-size="11" font-weight="700" fill="#93c5fd">symbol_index (PG)</text>
+
+      <!-- Arrow -->
+      <line x1="853" y1="53" x2="870" y2="53" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ca-ast)"/>
+      <line x1="853" y1="92" x2="870" y2="92" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ca-ast)"/>
+
+      <!-- Extra -->
+      <rect x="875" y="38" width="170" height="22" rx="6" fill="#1a1d27" stroke="#2563eb" stroke-width="1"/>
+      <text x="960" y="52" text-anchor="middle" font-size="9" fill="#8892a4">tree-sitter symbols (8 langs)</text>
+      <rect x="875" y="64" width="170" height="22" rx="6" fill="#1a1d27" stroke="#0891b2" stroke-width="1"/>
+      <text x="960" y="78" text-anchor="middle" font-size="9" fill="#67e8f9">rest: chunker-fallback symbols</text>
+      <rect x="875" y="90" width="170" height="22" rx="6" fill="#1a1d27" stroke="#7c3aed" stroke-width="1"/>
+      <text x="960" y="104" text-anchor="middle" font-size="9" fill="#c4b5fd">call/import_edges → analyze_impact</text>
+      </g>
+
+      <!-- ══════════ ROW 2: Markdown large ══════════ -->
+      <g id="ph-mdl-g">
+        <rect x="10" y="145" width="200" height="65" rx="8" fill="#1a1d27" stroke="#7c3aed" stroke-width="1.5"/>
+        <rect x="10" y="145" width="200" height="22" rx="8" fill="#7c3aed" opacity="0.25"/>
+        <rect x="10" y="159" width="200" height="8" fill="#7c3aed" opacity="0.25"/>
+        <text x="110" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#a78bfa">Markdown (large)</text>
+        <text x="110" y="178" text-anchor="middle" font-size="10" fill="#8892a4">heading count >= min_headings_for_tree</text>
+        <text x="110" y="192" text-anchor="middle" font-size="10" fill="#8892a4">(default 8), or path in always_tree_paths</text>
+        <text x="110" y="206" text-anchor="middle" font-size="10" fill="#8892a4">README, large guides</text>
+
+        <line x1="210" y1="177" x2="228" y2="177" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#ca-mdl)"/>
+
+        <rect x="233" y="148" width="200" height="65" rx="8" fill="#1a1d27" stroke="#7c3aed" stroke-width="1.5"/>
+        <text x="333" y="165" text-anchor="middle" font-size="11" font-weight="700" fill="#a78bfa">PageIndex DocTree</text>
+        <text x="333" y="180" text-anchor="middle" font-size="10" fill="#8892a4">Build heading hierarchy</text>
+        <text x="333" y="194" text-anchor="middle" font-size="10" fill="#8892a4">Then split into heading</text>
+        <text x="333" y="208" text-anchor="middle" font-size="10" fill="#8892a4">-based section chunks</text>
+
+        <line x1="433" y1="177" x2="450" y2="177" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#ca-mdl)"/>
+
+        <rect x="455" y="158" width="190" height="38" rx="8" fill="#1a1d27" stroke="#7c3aed" stroke-width="1.5"/>
+        <text x="550" y="173" text-anchor="middle" font-size="11" font-weight="700" fill="#a78bfa">No vector embedding step</text>
+        <text x="550" y="187" text-anchor="middle" font-size="10" fill="#8892a4">tree_json stored directly (JSONB)</text>
+
+        <line x1="645" y1="177" x2="663" y2="177" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#ca-mdl)"/>
+
+        <rect x="668" y="148" width="185" height="28" rx="6" fill="#1a1d27" opacity="0.6" stroke="#8892a4" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="760" y="166" text-anchor="middle" font-size="10" font-weight="700" fill="#8892a4">Not written (no Qdrant chunks)</text>
+
+        <rect x="668" y="182" width="185" height="28" rx="6" fill="#7c3aed" opacity="0.2" stroke="#7c3aed" stroke-width="1"/>
+        <text x="760" y="200" text-anchor="middle" font-size="11" font-weight="700" fill="#a78bfa">doc_trees (PG)</text>
+
+        <line x1="853" y1="162" x2="870" y2="162" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#ca-mdl)"/>
+        <rect x="875" y="142" width="170" height="40" rx="6" fill="#1a1d27" stroke="#7c3aed" stroke-width="1"/>
+        <text x="960" y="160" text-anchor="middle" font-size="10" fill="#8892a4">tree_json stored as JSONB</text>
+        <text x="960" y="173" text-anchor="middle" font-size="10" fill="#8892a4">PageIndex navigation</text>
+      </g>
+
+      <!-- ══════════ ROW 3: Markdown small ══════════ -->
+      <g id="ph-mds-g">
+        <rect x="10" y="238" width="200" height="54" rx="8" fill="#1a1d27" stroke="#0891b2" stroke-width="1.5"/>
+        <rect x="10" y="238" width="200" height="22" rx="8" fill="#0891b2" opacity="0.2"/>
+        <rect x="10" y="252" width="200" height="8" fill="#0891b2" opacity="0.2"/>
+        <text x="110" y="253" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">Markdown (small)</text>
+        <text x="110" y="270" text-anchor="middle" font-size="10" fill="#8892a4">not tree-indexed (below</text>
+        <text x="110" y="284" text-anchor="middle" font-size="10" fill="#8892a4">heading-count threshold)</text>
+
+        <line x1="210" y1="265" x2="228" y2="265" stroke="#0891b2" stroke-width="1.5" marker-end="url(#ca-mds)"/>
+
+        <rect x="233" y="238" width="200" height="55" rx="8" fill="#1a1d27" stroke="#0891b2" stroke-width="1.5"/>
+        <text x="333" y="256" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">Heading-based split</text>
+        <text x="333" y="272" text-anchor="middle" font-size="10" fill="#8892a4">Split on H1/H2/H3</text>
+        <text x="333" y="286" text-anchor="middle" font-size="10" fill="#8892a4">heading boundaries</text>
+
+        <line x1="433" y1="265" x2="450" y2="265" stroke="#0891b2" stroke-width="1.5" marker-end="url(#ca-mds)"/>
+
+        <rect x="455" y="248" width="190" height="34" rx="8" fill="#1a1d27" stroke="#0891b2" stroke-width="1.5"/>
+        <text x="550" y="264" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">Embed section chunks</text>
+        <text x="550" y="278" text-anchor="middle" font-size="10" fill="#8892a4">heading + body text</text>
+
+        <line x1="645" y1="265" x2="663" y2="265" stroke="#0891b2" stroke-width="1.5" marker-end="url(#ca-mds)"/>
+
+        <rect x="668" y="248" width="185" height="28" rx="6" fill="#059669" opacity="0.25" stroke="#059669" stroke-width="1"/>
+        <text x="760" y="266" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">Qdrant collection</text>
+        <text x="960" y="258" font-size="10" fill="#8892a4" text-anchor="middle">No doc_trees entry</text>
+        <text x="960" y="272" font-size="9" fill="#67e8f9" text-anchor="middle">+ symbol_index (fallback:</text>
+        <text x="960" y="283" font-size="9" fill="#67e8f9" text-anchor="middle">heading text)</text>
+      </g>
+
+      <!-- ══════════ ROW 4: SQL ══════════ -->
+      <g id="ph-sql-g">
+        <rect x="10" y="318" width="200" height="50" rx="8" fill="#1a1d27" stroke="#d97706" stroke-width="1.5"/>
+        <rect x="10" y="318" width="200" height="22" rx="8" fill="#d97706" opacity="0.2"/>
+        <rect x="10" y="332" width="200" height="8" fill="#d97706" opacity="0.2"/>
+        <text x="110" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#fbbf24">SQL</text>
+        <text x="110" y="350" text-anchor="middle" font-size="10" fill="#8892a4">.sql migration files</text>
+        <text x="110" y="364" text-anchor="middle" font-size="10" fill="#8892a4">schema definitions</text>
+
+        <line x1="210" y1="343" x2="228" y2="343" stroke="#d97706" stroke-width="1.5" marker-end="url(#ca-sql)"/>
+
+        <rect x="233" y="316" width="200" height="55" rx="8" fill="#1a1d27" stroke="#d97706" stroke-width="1.5"/>
+        <text x="333" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#fbbf24">Statement splitting</text>
+        <text x="333" y="349" text-anchor="middle" font-size="10" fill="#8892a4">Split on semicolons /</text>
+        <text x="333" y="359" text-anchor="middle" font-size="10" fill="#8892a4">DDL boundaries</text>
+
+        <line x1="433" y1="343" x2="450" y2="343" stroke="#d97706" stroke-width="1.5" marker-end="url(#ca-sql)"/>
+
+        <rect x="455" y="326" width="190" height="34" rx="8" fill="#1a1d27" stroke="#d97706" stroke-width="1.5"/>
+        <text x="550" y="342" text-anchor="middle" font-size="11" font-weight="700" fill="#fbbf24">Embed statement chunks</text>
+        <text x="550" y="356" text-anchor="middle" font-size="10" fill="#8892a4">SQL text + context</text>
+
+        <line x1="645" y1="343" x2="663" y2="343" stroke="#d97706" stroke-width="1.5" marker-end="url(#ca-sql)"/>
+
+        <rect x="668" y="326" width="185" height="28" rx="6" fill="#059669" opacity="0.25" stroke="#059669" stroke-width="1"/>
+        <text x="760" y="344" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">Qdrant collection</text>
+
+        <line x1="853" y1="340" x2="870" y2="340" stroke="#d97706" stroke-width="1.5" marker-end="url(#ca-sql)"/>
+        <text x="960" y="337" font-size="9" fill="#fbbf24" text-anchor="middle">+ symbol_index (fallback:</text>
+        <text x="960" y="348" font-size="9" fill="#fbbf24" text-anchor="middle">CREATE TABLE/VIEW/… names)</text>
+      </g>
+
+      <!-- ══════════ ROW 5: YAML/TOML ══════════ -->
+      <g id="ph-yaml-g">
+        <rect x="10" y="394" width="200" height="50" rx="8" fill="#1a1d27" stroke="#059669" stroke-width="1.5"/>
+        <rect x="10" y="394" width="200" height="22" rx="8" fill="#059669" opacity="0.2"/>
+        <rect x="10" y="408" width="200" height="8" fill="#059669" opacity="0.2"/>
+        <text x="110" y="409" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">YAML / TOML</text>
+        <text x="110" y="426" text-anchor="middle" font-size="10" fill="#8892a4">config files, manifests</text>
+        <text x="110" y="440" text-anchor="middle" font-size="10" fill="#8892a4">docker-compose, pyproject</text>
+
+        <line x1="210" y1="419" x2="228" y2="419" stroke="#059669" stroke-width="1.5" marker-end="url(#ca-yaml)"/>
+
+        <rect x="233" y="392" width="200" height="55" rx="8" fill="#1a1d27" stroke="#059669" stroke-width="1.5"/>
+        <text x="333" y="409" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">Document-level chunks</text>
+        <text x="333" y="422" text-anchor="middle" font-size="10" fill="#8892a4">Split by top-level keys /</text>
+        <text x="333" y="438" text-anchor="middle" font-size="10" fill="#8892a4">logical document sections</text>
+
+        <line x1="433" y1="419" x2="450" y2="419" stroke="#059669" stroke-width="1.5" marker-end="url(#ca-yaml)"/>
+
+        <rect x="455" y="402" width="190" height="34" rx="8" fill="#1a1d27" stroke="#059669" stroke-width="1.5"/>
+        <text x="550" y="418" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">Embed config chunks</text>
+        <text x="550" y="432" text-anchor="middle" font-size="10" fill="#8892a4">key-value context</text>
+
+        <line x1="645" y1="419" x2="663" y2="419" stroke="#059669" stroke-width="1.5" marker-end="url(#ca-yaml)"/>
+
+        <rect x="668" y="402" width="185" height="28" rx="6" fill="#059669" opacity="0.25" stroke="#059669" stroke-width="1"/>
+        <text x="760" y="420" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">Qdrant collection</text>
+
+        <line x1="853" y1="416" x2="870" y2="416" stroke="#059669" stroke-width="1.5" marker-end="url(#ca-yaml)"/>
+        <text x="960" y="413" font-size="9" fill="#6ee7b7" text-anchor="middle">+ symbol_index (fallback:</text>
+        <text x="960" y="424" font-size="9" fill="#6ee7b7" text-anchor="middle">top-level key name)</text>
+      </g>
+
+      <!-- ══════════ ROW 6: Other ══════════ -->
+      <g id="ph-oth-g">
+        <rect x="10" y="468" width="200" height="50" rx="8" fill="#1a1d27" stroke="#dc2626" stroke-width="1.5"/>
+        <rect x="10" y="468" width="200" height="22" rx="8" fill="#dc2626" opacity="0.2"/>
+        <rect x="10" y="482" width="200" height="8" fill="#dc2626" opacity="0.2"/>
+        <text x="110" y="483" text-anchor="middle" font-size="11" font-weight="700" fill="#fca5a5">Other</text>
+        <text x="110" y="500" text-anchor="middle" font-size="10" fill="#8892a4">plain text, JSON, XML</text>
+        <text x="110" y="514" text-anchor="middle" font-size="10" fill="#8892a4">Gradle, shell scripts …</text>
+
+        <line x1="210" y1="493" x2="228" y2="493" stroke="#dc2626" stroke-width="1.5" marker-end="url(#ca-oth)"/>
+
+        <rect x="233" y="466" width="200" height="55" rx="8" fill="#1a1d27" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="333" y="483" text-anchor="middle" font-size="11" font-weight="700" fill="#fca5a5">Paragraph splitting</text>
+        <text x="333" y="499" text-anchor="middle" font-size="10" fill="#8892a4">Split on blank lines /</text>
+        <text x="333" y="512" text-anchor="middle" font-size="10" fill="#8892a4">max-token boundaries</text>
+
+        <line x1="433" y1="493" x2="450" y2="493" stroke="#dc2626" stroke-width="1.5" marker-end="url(#ca-oth)"/>
+
+        <rect x="455" y="476" width="190" height="34" rx="8" fill="#1a1d27" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="550" y="492" text-anchor="middle" font-size="11" font-weight="700" fill="#fca5a5">Embed text chunks</text>
+        <text x="550" y="506" text-anchor="middle" font-size="10" fill="#8892a4">paragraph windows</text>
+
+        <line x1="645" y1="493" x2="663" y2="493" stroke="#dc2626" stroke-width="1.5" marker-end="url(#ca-oth)"/>
+
+        <rect x="668" y="476" width="185" height="28" rx="6" fill="#059669" opacity="0.25" stroke="#059669" stroke-width="1"/>
+        <text x="760" y="494" text-anchor="middle" font-size="11" font-weight="700" fill="#6ee7b7">Qdrant collection</text>
+      </g>
+
+      <!-- ══════════ ADDITIONAL PASS: Dispatch-arm sub-chunking ══════════ -->
+      <rect x="10" y="528" width="1040" height="30" rx="8" fill="#1a1d27" stroke="#db2777" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="24" y="542" font-size="11" font-weight="700" fill="#f472b6">Additional pass on top of the row above:  Dispatch-arm sub-chunking (switch / when / match, ≥3 arms)</text>
+      <text x="24" y="554" font-size="10" fill="#8892a4">TS/TSX/JS/JSX · Java · C# · Swift · Kotlin · Python — each arm becomes its own chunk_type="case" chunk, independently searchable in Qdrant + symbol_index</text>
+
+      <!-- ══════════ BOTTOM: Always-on operations ══════════ -->
+      <rect x="10" y="578" width="610" height="38" rx="8" fill="#1a1d27" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="24" y="592" font-size="11" font-weight="700" fill="#67e8f9">For every file:  L1 Summary (LLM, SHA-keyed cache)</text>
+      <text x="24" y="608" font-size="10" fill="#8892a4">1 LLM call per file · ~250 tokens · cached by (project, path, sha256) · stored in l1_summaries (PG)</text>
+
+      <rect x="635" y="578" width="415" height="38" rx="8" fill="#1a1d27" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="649" y="592" font-size="11" font-weight="700" fill="#a78bfa">Per project:  L0 Map  (no LLM)</text>
+      <text x="649" y="608" font-size="10" fill="#8892a4">Static project overview · ~500 tokens · modules, entry points, routing · l0_maps (PG)</text>
+
+    </svg>
+  </div>
+</div>
+
+<script>
+var PATHS = {
+  'ast':      { rowIds: ['ph-ast-g'],   color: '#2563eb' },
+  'md-large': { rowIds: ['ph-mdl-g'],   color: '#7c3aed' },
+  'md-small': { rowIds: ['ph-mds-g'],   color: '#0891b2' },
+  'sql':      { rowIds: ['ph-sql-g'],   color: '#d97706' },
+  'yaml':     { rowIds: ['ph-yaml-g'],  color: '#059669' },
+  'other':    { rowIds: ['ph-oth-g'],   color: '#dc2626' }
+};
+
+var GROUPS = ['ph-ast-g','ph-mdl-g','ph-mds-g','ph-sql-g','ph-yaml-g','ph-oth-g'];
+
+function highlight(pathId) {
+  document.querySelectorAll('.lang-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-path') === pathId);
+  });
+  if (!pathId) {
+    GROUPS.forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.opacity = '1';
+    });
+    return;
+  }
+  GROUPS.forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    var active = PATHS[pathId] && PATHS[pathId].rowIds.indexOf(id) >= 0;
+    el.style.opacity = active ? '1' : '0.15';
+    el.style.transition = 'opacity .3s';
+  });
+}
+</script>
+</body>
+</html>

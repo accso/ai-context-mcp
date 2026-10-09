@@ -1,0 +1,11 @@
+fastapi==0.137.0
+uvicorn[standard]==0.49.0
+numpy>=1.26,<3
+# FastEmbed — Qdrant's own ONNX-runtime-based embedding/rerank library.
+# Backs BOTH endpoints in main.py (embeddings + rerank) via a single
+# dependency: TextEmbedding (nomic-embed-text), LateInteractionTextEmbedding
+# (ColBERT), and TextCrossEncoder (cross-encoder fallback) — no torch, no
+# sentence-transformers, no separate arm64/CUDA build concerns, unlike the
+# previous pylate+torch stack this replaces (see git history of this file
+# for that stack's version-pin workarounds, no longer needed).
+fastembed==0.8.0

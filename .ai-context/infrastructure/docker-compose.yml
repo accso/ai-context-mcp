@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AI CONTEXT INFRASTRUCTURE — standalone compose project: ai-context-infrastructure
+#
+# Qdrant + Postgres + the shared inference service (embeddings + re-ranking).
+# Fully independent of any project and of the per-project MCP server / watcher
+# containers (which live in their own "ai-context" namespace, started via
+# `mise run ai-context-up`).
+#
+# Managed exclusively via:
+#   mise run ai-context-infra-up     (scripts/ai-context-infra-up.sh)
+#   mise run ai-context-infra-down   (scripts/ai-context-infra-down.sh)
+# Do NOT run this file directly with `docker compose up` — those scripts
+# create the external network/volumes first.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: ai-context-infrastructure
+
+networks:
+  ai-context-net:
+    external: true
+
+volumes:
+  qdrant_data:
+    external: true
+    name: ai_context_qdrant_data
+  postgres_data:
+    external: true
+    name: ai_context_postgres_data
+
+services:
+
+  # ── Vector Store ────────────────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:v1.18.2
+    container_name: ai_context_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: WARN
+    networks:
+      - ai-context-net
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/6333 && echo -e \"GET /healthz HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200\" <(cat <&3)' 2>/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Metadata / Project Registry ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai_context_postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"   # 5433 to avoid clash with local Postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      POSTGRES_DB: ai_context
+      POSTGRES_USER: ai_context
+      POSTGRES_PASSWORD: ai_context_local
+    networks:
+      - ai-context-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_context"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Inference Service — embeddings + re-ranking (shared, mandatory) ──────────
+  # Both retrieval-support responsibilities for all projects, backed entirely
+  # by FastEmbed/onnxruntime — no torch, no external LM Studio/omlx/ollama
+  # dependency for either. One container serves all projects. Always started
+  # alongside qdrant/postgres (see start.sh/stop.sh) — unlike the reranker-only
+  # service this replaces, embeddings are a hard dependency of indexing and
+  # search, so this is no longer conditional on a config.yaml toggle.
+  #
+  # Re-ranker backend/model is fixed at image build time only (RERANKER_BACKEND/
+  # RERANKER_MODEL build ARGs in inference/Dockerfile) — never a config.yaml
+  # field, since the embedding model's dimension is baked into every project's
+  # Qdrant collection schema and re-ranker model choice has no equivalent
+  # config-facing lever either (see docs/configuration.md).
+  inference:
+    image: ai-context-inference:latest
+    build: ../inference
+    container_name: ai_context_inference
+    restart: unless-stopped
+    networks:
+      - ai-context-net
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    # No host port exposure — internal-only (called by MCP servers + watchers on the Docker network)

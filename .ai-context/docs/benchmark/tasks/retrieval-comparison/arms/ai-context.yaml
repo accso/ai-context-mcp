@@ -1,0 +1,39 @@
+# Machine-readable arm config for the "ai-context" arm of the retrieval
+# benchmark (plan §6 — migrated from
+# .github/skills/benchmark/references/benchmark-session-ai-context.md,
+# which remains the authoritative human-readable protocol document; this
+# file is the tool-allowlist/metadata subset of it made machine-checkable).
+arm: ai-context
+protocolDoc: .github/skills/benchmark/references/benchmark-session-ai-context.md
+description: >
+  Answer every query using only this repo's own <project>-context_* MCP
+  tools (one instance per indexed project in the target monorepo).
+allowedTools:
+  # One repo_structure/semantic_search/get_file trio per indexed project;
+  # the target monorepo indexes five projects under this arm.
+  - "project-a-context_repo_structure"
+  - "project-a-context_semantic_search"
+  - "project-a-context_get_file"
+  - "project-b-context_repo_structure"
+  - "project-b-context_semantic_search"
+  - "project-b-context_get_file"
+  - "project-c-context_repo_structure"
+  - "project-c-context_semantic_search"
+  - "project-c-context_get_file"
+  - "project-d-context_repo_structure"
+  - "project-d-context_semantic_search"
+  - "project-d-context_get_file"
+  - "ai-context-context_repo_structure"
+  - "ai-context-context_semantic_search"
+  - "ai-context-context_get_file"
+disallowedNote: >
+  Any generic filesystem read/grep/glob tool, any IDE-native tool, web
+  search, or any tool outside the allowlist above invalidates that query's
+  data point for this arm (see protocolDoc for the full rationale).
+operatorMetadataFields:
+  - targetRepository
+  - dateTimeRun
+  - totalFilesApprox
+  - totalFoldersApprox
+  - primaryLanguages
+  - executingModel

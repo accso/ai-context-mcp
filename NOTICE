@@ -1,0 +1,7 @@
+ai-context-mcp Copyright 2026 Accso GmbH
+
+This distribution's LSP-bridge Docker images bundle third-party
+language-server binaries under their own licenses (MIT, BSD-3-Clause,
+and Apache-2.0). See THIRD-PARTY-NOTICES.md for the full list and
+.ai-context/docs/lsp-integration.md for the per-dependency licensing
+analysis.

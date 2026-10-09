@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Context — Overview &amp; Benefits</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3347;
+    --text: #e2e8f0;
+    --text-muted: #8892a4;
+    --accent: #6366f1;
+    --green: #059669;
+    --blue: #2563eb;
+    --amber: #d97706;
+    --red: #dc2626;
+    --cyan: #0891b2;
+    --purple: #7c3aed;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 24px 0; display: flex; flex-direction: column; }
+  .header-top { display: flex; align-items: center; gap: 16px; padding-bottom: 6px; }
+  header h1 { font-size: 17px; font-weight: 700; color: #fff; }
+  header p { font-size: 12px; color: var(--text-muted); }
+  .tab-nav { display: flex; gap: 2px; }
+  .tab-nav a { display: inline-block; padding: 7px 15px; font-size: 13px; font-weight: 500; background: none; border-bottom: 2px solid transparent; color: var(--text-muted); text-decoration: none; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .tab-nav a:hover { color: var(--text); }
+  .tab-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+
+  h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: .3rem; }
+  .subtitle { color: var(--text-muted); font-size: 1.05rem; margin-bottom: 2.5rem; }
+
+  h2 {
+    font-size: 1.25rem; font-weight: 600; color: #fff;
+    margin: 2.5rem 0 1rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1rem; font-weight: 600; color: #c7d2fe; margin: 1.2rem 0 .4rem; }
+
+  p { color: var(--text-muted); margin-bottom: .8rem; }
+  p strong { color: var(--text); }
+
+  /* Problem / Solution callout */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+  .callout.problem { border-left-color: var(--red); }
+  .callout.solution { border-left-color: var(--green); }
+  .callout p { margin: 0; }
+
+  /* Benefit cards */
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .benefit-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+  }
+  .benefit-card .icon { font-size: 1.6rem; margin-bottom: .5rem; }
+  .benefit-card h3 { margin: 0 0 .4rem; color: #fff; font-size: .95rem; }
+  .benefit-card p { margin: 0; font-size: .88rem; }
+
+  /* How-it-works flow */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    margin: 1rem 0;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .9rem 1.2rem;
+  }
+  .step-num {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: .82rem;
+    border-radius: 50%;
+    width: 1.8rem;
+    height: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: .1rem;
+  }
+  .flow-step .body { flex: 1; }
+  .flow-step .body strong { color: #fff; }
+  .flow-step .body p { margin: .2rem 0 0; font-size: .88rem; }
+
+  /* Layers table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: .88rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--text);
+    text-align: left;
+    padding: .55rem .9rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: .55rem .9rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+  td strong { color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+
+  /* Architecture ASCII */
+  .arch-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    font-family: 'Fira Mono', 'Cascadia Code', monospace;
+    font-size: .82rem;
+    line-height: 1.55;
+    color: #94a3b8;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+  .arch-box .hl { color: #a5b4fc; }
+  .arch-box .green { color: #6ee7b7; }
+  .arch-box .amber { color: #fcd34d; }
+  .arch-box .blue { color: #93c5fd; }
+
+  /* Colour pills */
+  .pill {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+    margin-right: .3rem;
+  }
+  .pill.l0 { background: #1d4ed820; color: #93c5fd; border: 1px solid #1d4ed850; }
+  .pill.l1 { background: #05966920; color: #6ee7b7; border: 1px solid #05966950; }
+  .pill.l2 { background: #7c3aed20; color: #c4b5fd; border: 1px solid #7c3aed50; }
+
+  /* Comparison */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .compare-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+  }
+  .compare-box.before { border-top: 3px solid var(--red); }
+  .compare-box.after { border-top: 3px solid var(--green); }
+  .compare-box .label { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: .6rem; }
+  .compare-box.before .label { color: var(--red); }
+  .compare-box.after .label { color: var(--green); }
+  .compare-box ul { padding-left: 1.1rem; }
+  .compare-box li { color: var(--text-muted); font-size: .88rem; margin-bottom: .3rem; }
+
+  @media (max-width: 600px) {
+    .compare { grid-template-columns: 1fr; }
+    .benefits-grid { grid-template-columns: 1fr; }
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.4rem;
+    margin-bottom: 2rem;
+    font-size: .88rem;
+  }
+  .toc p { color: var(--text-muted); margin-bottom: .4rem; font-size: .82rem; }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin-bottom: .2rem; }
+  .toc a { color: #a5b4fc; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>AI Context — Overview</h1>
+      <p>Token-efficient, locally run AI context layer for coding agents</p>
+    </div>
+  </div>
+  <nav class="tab-nav">
+    <a href="overview.html" class="active">Overview</a>
+    <a href="context-map.html">Context Map</a>
+    <a href="infrastructure.html">Infrastructure</a>
+    <a href="sequences.html">Sequences</a>
+    <a href="chunking.html">Chunking Strategy</a>
+  </nav>
+</header>
+
+<div class="page">
+
+  <div class="toc">
+    <p>On this page</p>
+    <ol>
+      <li><a href="#problem">The Problem</a></li>
+      <li><a href="#solution">What This System Does</a></li>
+      <li><a href="#benefits">Key Benefits</a></li>
+      <li><a href="#how-it-works">How It Works (High Level)</a></li>
+      <li><a href="#retrieval-layers">The Three Retrieval Layers</a></li>
+      <li><a href="#query-flow">A Query From Start to Finish</a></li>
+      <li><a href="#components">Main Components</a></li>
+      <li><a href="#privacy">Privacy &amp; Local-Only Boundary</a></li>
+    </ol>
+  </div>
+
+  <!-- ───────────────────────────── PROBLEM ───────────────────────────── -->
+  <h2 id="problem">1. The Problem</h2>
+
+  <p>AI coding assistants (like GitHub Copilot) become much more useful when they understand <strong>your specific codebase</strong>. The obvious approach is to dump your source files directly into the conversation — but this breaks down quickly:</p>
+
+  <div class="compare">
+    <div class="compare-box before">
+      <div class="label">Without this system</div>
+      <ul>
+        <li>Token budgets fill up fast — large repos get truncated</li>
+        <li>Irrelevant code is noise — the model has to work against it</li>
+        <li>Sending proprietary code to a cloud API is often not acceptable</li>
+        <li>Every query re-reads the whole project — slow</li>
+        <li>The assistant has no memory of what changed since last time</li>
+      </ul>
+    </div>
+    <div class="compare-box after">
+      <div class="label">With this system</div>
+      <ul>
+        <li>Only the relevant code sections are sent — an estimated 200–500 tokens per query (illustrative, not yet independently measured)</li>
+        <li>Answers are grounded in exactly the code that matters</li>
+        <li>Indexing and retrieval run on your machine — our tooling sends no data to external servers (the connected agent is a separate matter, see Privacy)</li>
+        <li>The index updates automatically as you edit files</li>
+        <li>Works across multiple projects / monorepos simultaneously</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────── SOLUTION ───────────────────────────── -->
+  <h2 id="solution">2. What This System Does</h2>
+
+  <div class="callout solution">
+    <p>AI Context sits between your IDE and your codebase. It watches your files, builds a smart searchable index, and when your AI assistant asks a question, it finds and returns <strong>only the code snippets that actually answer that question</strong> — in far fewer tokens than a raw file dump.</p>
+  </div>
+
+  <p>Think of it like a <strong>local research assistant</strong> for your code. You ask "how does authentication work?" and instead of handing Copilot thousands of lines of source, it hands back raw ranked hits — file paths, line ranges, and a cached one-paragraph summary per file — no LLM condenses this into a single prose answer. Copilot then asks for the raw code from the specific locations it actually needs.</p>
+
+  <!-- ───────────────────────────── BENEFITS ───────────────────────────── -->
+  <h2 id="benefits">3. Key Benefits</h2>
+
+  <div class="benefits-grid">
+
+    <div class="benefit-card">
+      <div class="icon">⚡</div>
+      <h3>Far Fewer Tokens Than a Raw Dump</h3>
+      <p>Queries return raw ranked hits and cached per-file summaries (an estimated 200–500 tokens, not yet independently measured) instead of raw file dumps. You stay well within token budgets, even on large repos.</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">🔒</div>
+      <h3>Local Indexing &amp; Retrieval</h3>
+      <p>All embedding, search, and summarisation runs on your own machine — embeddings + re-ranking via a bundled internal service, summarisation via a local LLM (LM Studio / omlx / Ollama). Our components send no source code to external services; what the connected agent does with returned context is outside our control (see Privacy).</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">🔄</div>
+      <h3>Always Up-to-Date</h3>
+      <p>A file watcher detects changes within 2 seconds of a save when native file events reach the container (see README's "File watching reliability" — a polling fallback covers setups, like some Docker Desktop/Rancher Desktop configurations, where they don't). Only the changed chunks are re-indexed. After a <code>git pull</code>, the system catches up automatically on next start.</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">🎯</div>
+      <h3>Precise Symbol Lookup</h3>
+      <p>Classes, functions, and interfaces are extracted using AST parsing and stored in a symbol index. The AI can look up exact identifiers directly — no fuzzy guessing required.</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">🗂️</div>
+      <h3>Multi-Project / Monorepo</h3>
+      <p>Each sub-project gets its own index. You can configure one project to automatically pull in context from another (e.g. a shared library) when relevant keywords appear in the query.</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">💻</div>
+      <h3>Works With Any MCP Agent</h3>
+      <p>The system speaks the MCP protocol over HTTP. Any coding agent that supports MCP — e.g. GitHub Copilot (native VS Code plugin or its IntelliJ plugin) or OpenCode — connects without extra integration work.</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">📖</div>
+      <h3>Smart Documentation Search</h3>
+      <p>Long docs (ADRs, wikis, RFCs) are indexed as a hierarchical table of contents. The AI navigates them by reasoning about structure — not just fuzzy similarity.</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">🧠</div>
+      <h3>Hybrid Search Quality</h3>
+      <p>Results combine semantic vector search (meaning) with token-level re-ranking (ColBERT). Exact class names and annotations surface reliably alongside conceptually similar code.</p>
+    </div>
+
+    <div class="benefit-card">
+      <div class="icon">💾</div>
+      <h3>Team-Friendly Backups</h3>
+      <p>The vector index can be backed up as plain files committed to the repo (<code>qdrant.vectors.json</code> + <code>postgres.json</code>). Teammates who clone <em>and run restore</em> skip the full initial indexing — restore is a deliberate step (prompted by <code>ai-context-up</code>), not automatic on clone, and the committed backup covers <code>projects</code>/<code>file_index</code>/<code>l1_summaries</code>/<code>l0_maps</code>/<code>doc_trees</code> — not the <code>symbol_index</code>/<code>import_edges</code>/<code>call_edges</code> tables, which rebuild from a reindex.</p>
+    </div>
+
+  </div>
+
+  <!-- ───────────────────────────── HOW IT WORKS ───────────────────────────── -->
+  <h2 id="how-it-works">4. How It Works (High Level)</h2>
+
+  <p>The system has two separate phases: <strong>indexing</strong> (happening in the background) and <strong>retrieval</strong> (happening when you query).</p>
+
+  <h3>Indexing — building the knowledge base</h3>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="body">
+        <strong>File Watcher monitors your project</strong>
+        <p>A background process watches every source file for changes. When a file is saved it computes a SHA-256 hash. If the file hasn't changed, nothing happens — zero wasted work.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="body">
+        <strong>Smart Chunker splits the file</strong>
+        <p>Changed files are split into meaningful chunks. Java, C#, TypeScript, and TSX files are split using real tree-sitter AST parsing at class/function boundaries; other languages (e.g. Kotlin, Python) currently use a regex-based structural fallback with the same boundary granularity; a SQL file is split at statement boundaries; a Markdown doc at headings. Each chunk is a coherent unit of code or text.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="body">
+        <strong>Embedder converts chunks to vectors</strong>
+        <p>Each chunk is passed to a local embedding model (e.g. nomic-embed-text) which converts it into a 768-dimension numeric vector — a mathematical representation of its meaning.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <div class="body">
+        <strong>Stored in Qdrant + PostgreSQL</strong>
+        <p>Vectors go into Qdrant (the vector database). File metadata, structure maps, and LLM-generated file summaries go into PostgreSQL. Symbol locations (class names, function names) go into a dedicated symbol index table.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Retrieval — answering a query</h3>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="body">
+        <strong>IDE orients itself first</strong>
+        <p>When you ask the agent something like "how does the payment flow work?", it first calls the <code>repo_structure</code> tool to get the project map and directory tree — no LLM round-trip, direct database lookup.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="body">
+        <strong>Agent calls semantic_search</strong>
+        <p>The agent calls <code>semantic_search(query)</code> itself. If the query looks like a single identifier it resolves instantly via the symbol index; otherwise it falls back to hybrid/ColBERT vector search over Qdrant. No local LLM sits in this path.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="body">
+        <strong>Re-ranker improves result quality</strong>
+        <p>The initial vector search returns ~20 candidates. A ColBERT re-ranker then re-scores them at the token level — ensuring exact class names and annotations rank highly, not just semantically similar prose.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <div class="body">
+        <strong>Agent receives raw ranked results</strong>
+        <p><code>semantic_search</code> returns raw ranked hits — file path, line range, score, and an L1 summary where available (e.g. <code>PaymentService.kt:45-120</code>) — not a condensed prose summary. The agent judges relevance itself.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">5</div>
+      <div class="body">
+        <strong>Agent fetches full content on demand</strong>
+        <p>If the agent needs the actual source code, it calls <code>get_file</code> with the file path (and optionally a line range). The MCP server slices the stored chunk text (Qdrant) or doc-tree node <code>body_text</code> (PostgreSQL) to the exact requested lines, reports any coverage gaps, and never reads the project file from disk. No LLM needed, very fast.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">6</div>
+      <div class="body">
+        <strong>Agent checks blast radius before a risky edit (optional)</strong>
+        <p>Before changing a symbol, the agent can call <code>analyze_impact(symbol_name, direction)</code> to traverse the call/import graph (PostgreSQL) and get direct callers/callees, ambiguous call targets, and likely-covering test files — a heuristic, structural view (not a real language server).</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">7</div>
+      <div class="body">
+        <strong>Agent asks the real language server for certainty (optional)</strong>
+        <p>When the heuristic call graph isn't precise enough, the agent can call <code>resolve_symbol(file_path, line, character, kind)</code> for a compiler-grade <code>definition</code>/<code>references</code>/<code>hover</code> answer from a real language server running in the LSP Bridge — available for languages auto-detected in that project.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────── RETRIEVAL LAYERS ───────────────────────────── -->
+  <h2 id="retrieval-layers">5. The Three Retrieval Layers</h2>
+
+  <p>Context is assembled from three levels of detail. The calling agent decides which levels to use based on which tool it calls — there is no LLM router in between.</p>
+
+
+  <table>
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Name</th>
+        <th>What it contains</th>
+        <th>How it's built</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="pill l0">L0</span></td>
+        <td><strong>Project Map</strong></td>
+        <td>A static overview: which modules exist, where the entry points are, what the key files are. Covers the whole project in a compact form.</td>
+        <td>Generated once at startup from the file structure. No LLM required.</td>
+      </tr>
+      <tr>
+        <td><span class="pill l1">L1</span></td>
+        <td><strong>File Summaries</strong></td>
+        <td>A 4–6 sentence technical summary per source file. Answers "what does this file do and what are its key responsibilities?"</td>
+        <td>Generated by the local LLM once per unique file version. Cached by content hash — never re-generated unless the file changes.</td>
+      </tr>
+      <tr>
+        <td><span class="pill l2">L2</span></td>
+        <td><strong>Code Chunks</strong></td>
+        <td>The actual source code, split into AST-boundary chunks (class level, function level). Stored as semantic vectors in Qdrant.</td>
+        <td>Chunked and embedded on every file change. Only changed chunks are re-embedded.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>This layered approach means a high-level question ("what modules exist?") is answered cheaply from L0, while a precise question ("show me the JWT validation logic") goes all the way to L2 raw code.</p>
+
+  <!-- ───────────────────────────── QUERY FLOW ───────────────────────────── -->
+  <h2 id="query-flow">6. A Query From Start to Finish</h2>
+
+  <div class="arch-box">
+<span class="hl">IDE (calling agent)</span>
+  │
+  │  "how does authentication work?"
+  │
+  │  1. repo_structure()                          → orientation
+  ▼
+<span class="green">MCP Server</span>  (:7100/mcp)
+  │
+  │  2. semantic_search("JwtValidator")
+  │       identifier? → PostgreSQL symbol_index → exact hit
+  │       else        → embed query → Qdrant semantic search
+  │                       │
+  │                       │  POST /rerank  →  <span class="amber">ColBERT Re-ranker</span>  (optional)
+  │                       ▼
+  │                  raw ranked hits + L1 summaries (no LLM, no prose)
+  │
+  ←  "## Search Results\n- auth/JwtValidator.kt:12-80  [score: 0.91]\n  L1: Validates JWT signatures…"
+  │
+  │  3. get_file("auth/JwtValidator.kt", 12, 80)   → only if step 2 wasn't enough
+  ▼
+<span class="green">MCP Server</span>  →  Qdrant/PostgreSQL  →  exact source lines  →  calling agent
+  </div>
+
+  <!-- ───────────────────────────── COMPONENTS ───────────────────────────── -->
+  <h2 id="components">7. Main Components</h2>
+
+  <table>
+    <thead>
+      <tr><th>Component</th><th>What it is</th><th>Where it runs</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>File Watcher</strong></td>
+        <td>Monitors the project folder, detects changes, triggers chunking + embedding + summarisation. Also reconciles the index on startup to catch changes that happened while it was off.</td>
+        <td>Docker container (Python)</td>
+      </tr>
+      <tr>
+        <td><strong>MCP Server</strong></td>
+        <td>The HTTP endpoint your IDE connects to. Exposes 5 agent-facing tools: <code>repo_structure</code>, <code>semantic_search</code>, <code>get_file</code>, <code>analyze_impact</code> (call/import graph blast-radius traversal), <code>resolve_symbol</code> (real LSP definition/references/hover, for languages auto-detected in the project). A separate <code>/mcp-admin</code> endpoint exposes 2 operator-only diagnostics (<code>list_recent_changes</code>, <code>get_index_status</code>).</td>
+        <td>Docker container (Node.js), one consolidated container per repo — one Express app per registered project inside it, each on its own port</td>
+      </tr>
+      <tr>
+        <td><strong>LSP Bridge</strong></td>
+        <td>Runs real language servers (e.g. <code>typescript-language-server</code>, Python's multilspy-backed servers) in a lazy per-(project, language) process pool, idle-evicted after <code>lsp.idle_timeout_minutes</code> (default 15). Backs the <code>resolve_symbol</code> tool with compiler-grade certainty the heuristic call graph can't provide.</td>
+        <td>Docker container (Python/FastAPI), one per repo</td>
+      </tr>
+      <tr>
+        <td><strong>Inference Service</strong></td>
+        <td>Generates embeddings (<code>nomic-embed-text-v1.5</code> via FastEmbed/onnxruntime) and, after Qdrant returns semantic candidates, re-ranks them at the token level (ColBERT MaxSim) so exact identifiers (class names, annotations) surface at the top. ~100–300 ms for 20 candidates. Mandatory, always-on — no torch, no LM Studio/omlx dependency for either.</td>
+        <td>Docker container (shared, CPU-only)</td>
+      </tr>
+      <tr>
+        <td><strong>Qdrant</strong></td>
+        <td>A vector database. Stores all the embedded code chunks (L2) and answers similarity queries: "find the 5 chunks most semantically similar to this query".</td>
+        <td>Docker container (shared)</td>
+      </tr>
+      <tr>
+        <td><strong>PostgreSQL</strong></td>
+        <td>Stores everything except vectors: file metadata, L0 project maps, L1 file summaries, documentation tree structures, the symbol index (class/function locations), and the call/import graph (<code>call_edges</code>, <code>import_edges</code>) backing <code>analyze_impact</code> and the <code>[hub]</code>/<code>[bridge]</code> structural-role tags on <code>repo_structure</code>.</td>
+        <td>Docker container (shared)</td>
+      </tr>
+      <tr>
+        <td><strong>Local LLM (LM Studio / omlx / Ollama)</strong></td>
+        <td>Runs on the developer's machine outside Docker. Generates L1 file summaries only — embeddings are handled by the internal Inference Service instead (see above), not this local LLM. There is no local LLM in the retrieval path — the calling agent is the only reasoning entity (see "Earlier Design: Routing LLM (Removed)" in the README).</td>
+        <td>Host machine (not Docker)</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <!-- ───────────────────────────── PRIVACY ───────────────────────────── -->
+  <h2 id="privacy">8. Privacy &amp; Local-Only Boundary</h2>
+
+  <div class="callout">
+    <p><strong>All of our processing happens on your machine.</strong> The inference service (embeddings + re-ranking), vector database, metadata store and MCP server run locally, and none of them send source code, summaries or query results to an external server.</p>
+    <p><strong>Important boundary:</strong> we cannot control what the connected agent does with the context it requests. With a cloud-hosted model (e.g. GitHub Copilot, JetBrains AI Assistant), returned code excerpts become part of the agent's prompt and are sent to that provider, which may not count as local. Use an agent backed by a local or approved model if data must not leave your environment.</p>
+  </div>
+
+  <p>Our only external-to-Docker network call is to the LLM provider for L1 summaries (LM Studio / omlx / Ollama, local only if its base URL points to your machine) — embeddings and re-ranking stay entirely inside the Docker network via the bundled inference service. Your IDE connects to <code>http://localhost:&lt;port&gt;/mcp</code> — entirely local.</p>
+
+</div>
+</body>
+</html>

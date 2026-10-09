@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "ai-context-context": {
+      "type": "http",
+      "url": "http://localhost:7111/mcp"
+    }
+  }
+}

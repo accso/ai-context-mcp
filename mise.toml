@@ -1,0 +1,46 @@
+[tools]
+java = "corretto-21.0.11.10.1"
+node = "24"
+"github:pnpm/pnpm" = {version = "11.1.2", asset_filter = "pnpm-macos-arm64"}
+# Matches watcher/Dockerfile, lsp-bridge/Dockerfile, reranker/Dockerfile
+# (all `FROM python:3.12-slim`) — pinned here so `pytest` runs against the
+# same Python version production containers use, notably for
+# tree-sitter-languages (watcher/requirements.txt), which does not yet
+# support Python 3.13+.
+python = "3.12"
+
+[tasks.ai-context-infra-up]
+description = "Ensure ALL shared, project-independent infra is running: DB (Qdrant + Postgres) + re-ranker. Stays attached until Ctrl-C — use ai-context-infra-up-daemon to return immediately instead."
+run = "./scripts/ai-context-infra-up.sh"
+
+[tasks.ai-context-infra-up-daemon]
+description = "Same as ai-context-infra-up, but returns control to your shell immediately instead of staying attached for Ctrl-C. Stop later with ai-context-infra-down."
+run = "./scripts/ai-context-infra-up.sh --daemon"
+
+[tasks.ai-context-infra-down]
+description = "Stop ALL shared infra (DB + re-ranker); pass --wipe to also delete DB data volumes, --stop-services to stop per-project MCP/watchers first"
+run = "./scripts/ai-context-infra-down.sh"
+
+[tasks.ai-context-up]
+description = "Start AI context layer (runs init automatically if not yet initialised). Stays attached until Ctrl-C — use ai-context-up-daemon to return immediately instead."
+run = "./scripts/ai-context-up.sh"
+
+[tasks.ai-context-up-daemon]
+description = "Same as ai-context-up, but returns control to your shell immediately instead of staying attached for Ctrl-C. Stop later with ai-context-down."
+run = "./scripts/ai-context-up.sh --daemon"
+
+[tasks.ai-context-down]
+description = "Stop all AI context MCP servers and watchers; takes a snapshot backup unless --no-backup is passed"
+run = "./scripts/ai-context-down.sh"
+
+[tasks.ai-context-reset]
+description = "Wipe ALL projects, ask per-project whether to restore from backup, then re-init and restart"
+run = "./scripts/ai-context-reset.sh"
+
+[tasks.ai-context-backup]
+description = "Backup all projects in parallel: qdrant.snapshot + qdrant.vectors.json + postgres.json. Commit json files to git."
+run = "./scripts/ai-context-backup.sh"
+
+[tasks.ai-context-clean]
+description = "Completely remove this project from all AI Context databases (Qdrant + Postgres incl. registration)"
+run = "./scripts/ai-context-clean.sh"

@@ -1,0 +1,11 @@
+# Test-only dependencies for .ai-context's Python components (watcher,
+# lsp-bridge, scripts). Not used by any production Docker image — each
+# component's own requirements.txt remains the source of truth for what
+# actually ships. Install with:
+#   pip install -r requirements-test.txt -r watcher/requirements.txt \
+#     -r lsp-bridge/requirements.txt -r scripts/requirements.txt
+pytest==8.4.2
+pytest-asyncio==0.24.0
+# Test-double libraries for Tier 2 (integration) — HTTP/subprocess mocking
+# without needing the real LM Studio/omlx/language-server processes.
+responses==0.25.8

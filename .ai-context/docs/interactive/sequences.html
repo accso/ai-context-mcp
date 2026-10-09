@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Context — Sequence Diagrams</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --border: #2e3347; --text: #e2e8f0; --text-muted: #8892a4; --accent: #6366f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 24px 0; display: flex; flex-direction: column; flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; gap: 16px; padding-bottom: 6px; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header p { font-size: 12px; color: var(--text-muted); }
+  .tab-nav { display: flex; gap: 2px; }
+  .tab-nav a { display: inline-block; padding: 7px 15px; font-size: 13px; font-weight: 500; background: none; border-bottom: 2px solid transparent; color: var(--text-muted); text-decoration: none; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .tab-nav a:hover { color: var(--text); }
+  .tab-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* Sidebar */
+  .seq-sidebar { width: 190px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px; flex-shrink: 0; overflow-y: auto; }
+  .seq-sidebar h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  .seq-uc-btn { display: block; width: 100%; padding: 10px 12px; margin-bottom: 8px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); cursor: pointer; text-align: left; font-size: 12px; line-height: 1.4; transition: background .15s, color .15s, border-color .15s; }
+  .seq-uc-btn:hover { background: var(--surface2); color: var(--text); }
+  .seq-uc-btn.active { background: var(--surface2); border-color: var(--accent); color: var(--text); }
+  .seq-uc-btn span { display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
+  .seq-uc-btn.active span { color: var(--accent); }
+
+  /* Center */
+  .seq-center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .seq-controls { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .seq-controls button { padding: 5px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; font-size: 12px; transition: background .15s; }
+  .seq-controls button:hover { background: var(--border); }
+  .seq-controls button:disabled { opacity: .4; cursor: default; }
+  .seq-title { font-size: 13px; font-weight: 600; margin-right: auto; }
+  .seq-progress { font-size: 12px; color: var(--text-muted); }
+  .seq-canvas { flex: 1; overflow: auto; background: var(--bg); padding: 0; }
+  .seq-canvas svg { display: block; }
+  .seq-placeholder { color: var(--text-muted); font-size: 13px; text-align: center; padding: 80px 24px; line-height: 1.8; }
+
+  /* Right detail */
+  .seq-detail { width: 270px; background: var(--surface); border-left: 1px solid var(--border); padding: 16px; overflow-y: auto; flex-shrink: 0; }
+  .seq-detail h4 { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  .step-num-big { font-size: 40px; font-weight: 800; color: var(--accent); line-height: 1; margin-bottom: 8px; }
+  .step-lbl { font-size: 13px; font-weight: 600; margin-bottom: 6px; font-family: monospace; color: #a5b4fc; word-break: break-all; }
+  .step-actors { font-size: 11px; color: var(--accent); margin-bottom: 10px; }
+  .step-desc-text { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+
+  /* SVG step elements */
+  .sq-step { cursor: pointer; }
+  .sq-step .step-circle { fill: #22263a; stroke: #2e3347; transition: fill .15s, stroke .15s; }
+  .sq-step:hover .step-circle { stroke: var(--accent); }
+  .sq-step.current .step-circle { fill: var(--accent); stroke: var(--accent); }
+  .sq-step .step-num-text { fill: #8892a4; transition: fill .15s; }
+  .sq-step.current .step-num-text { fill: #fff; font-weight: 700; }
+  .sq-step.current .step-arrow-lbl { fill: #fff !important; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>AI Context — Sequence Diagrams</h1>
+      <p>Step-by-step interaction flows for key use cases</p>
+    </div>
+  </div>
+  <nav class="tab-nav">
+    <a href="overview.html">Overview</a>
+    <a href="context-map.html">Context Map</a>
+    <a href="infrastructure.html">Infrastructure</a>
+    <a href="sequences.html" class="active">Sequences</a>
+    <a href="chunking.html">Chunking Strategy</a>
+  </nav>
+</header>
+
+<div class="main">
+  <aside class="seq-sidebar">
+    <h3>Use Cases</h3>
+    <button class="seq-uc-btn" data-uc="uc2" onclick="selectUC('uc2')">
+      <span>UC-2</span>Live File Change<br>5 actors · 13 steps
+    </button>
+    <button class="seq-uc-btn" data-uc="uc3" onclick="selectUC('uc3')">
+      <span>UC-3</span>Developer Query<br>6 actors · 13 steps
+    </button>
+    <button class="seq-uc-btn" data-uc="uc4" onclick="selectUC('uc4')">
+      <span>UC-4</span>Code Retrieval<br>4 actors · 9 steps
+    </button>
+    <button class="seq-uc-btn" data-uc="uc5" onclick="selectUC('uc5')">
+      <span>UC-5</span>Impact Analysis<br>3 actors · 8 steps
+    </button>
+    <button class="seq-uc-btn" data-uc="uc6" onclick="selectUC('uc6')">
+      <span>UC-6</span>Symbol Resolution<br>4 actors · 10 steps
+    </button>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <p style="font-size:11px;color:var(--text-muted);line-height:1.6">
+        The full sequence is always shown. Click any numbered step directly to see its details — or use <strong style="color:var(--text)">Prev</strong> / <strong style="color:var(--text)">Next</strong> / <strong style="color:var(--text)">Play</strong> to walk through in order. Return arrows are dashed.
+      </p>
+    </div>
+  </aside>
+
+  <div class="seq-center">
+    <div class="seq-controls">
+      <span class="seq-title" id="seq-title">Select a use case</span>
+      <button onclick="seqPrev()" id="btn-prev" disabled>&#8592; Prev</button>
+      <button onclick="seqNext()" id="btn-next" disabled>Next &#8594;</button>
+      <button onclick="togglePlay()" id="btn-play" disabled>Play</button>
+      <button onclick="seqReset()" id="btn-reset" disabled>Reset</button>
+      <span class="seq-progress" id="seq-progress"></span>
+    </div>
+    <div class="seq-canvas" id="seq-canvas">
+      <div class="seq-placeholder">
+        Select a use case from the left panel<br>then step through the sequence with Next / Play.
+      </div>
+    </div>
+  </div>
+
+  <aside class="seq-detail" id="seq-detail">
+    <h4>Current Step</h4>
+    <div id="seq-step-detail">
+      <p class="step-desc-text">No step selected yet.</p>
+    </div>
+  </aside>
+</div>
+
+<script>
+var SEQS = {
+  uc2: {
+    title: 'UC-2: Live File Change', color: '#2563eb',
+    actors: ['FileSystem', 'Watcher', 'Embedder', 'PostgreSQL', 'Qdrant'],
+    steps: [
+      {from:0, to:1, lbl:'file event (create/modify/delete)', desc:'Watchdog (inotify/kqueue) detects a filesystem change event in the watched project directory.'},
+      {from:1, to:1, self:true, lbl:'debounce 2s — batch events', desc:'Wait 2 seconds for rapid saves to settle. Multiple events for the same file are collapsed into one.'},
+      {from:1, to:3, lbl:'SELECT sha256, chunk_count WHERE path=...', desc:'Read the stored SHA-256 hash for the changed file to decide whether re-indexing is needed.'},
+      {from:3, to:1, ret:true, lbl:'current sha + chunk_count', desc:'PostgreSQL returns the previously stored content hash and the recorded chunk count.'},
+      {from:1, to:1, self:true, lbl:'compare SHAs — decide action', desc:'If SHA unchanged: only backfill missing L1 summaries. If SHA changed: proceed with full re-index.'},
+      {from:1, to:1, self:true, lbl:'chunk(file)', desc:'Re-chunk the file. Java/C#/TypeScript/TSX use real tree-sitter AST boundaries (functions, classes); other languages currently use a language-aware regex/pattern-based fallback with the same boundary granularity.'},
+      {from:1, to:2, lbl:'embed(chunks[])', desc:'Send all new text chunks to the embedding service (local or remote model).'},
+      {from:2, to:4, lbl:'delta upsert (stable UUID v5 IDs): add new/changed, delete removed', desc:'Fetch existing chunk IDs for this file from Qdrant, then add/update only new-or-changed chunks and delete only chunks that no longer exist — stable UUID v5 IDs (derived from SHA256(project:path:text)) make this an incremental delta, not a delete-all-then-reinsert of the whole file.'},
+      {from:1, to:3, lbl:'UPDATE file_index SET sha256, chunk_count', desc:'Update the file_index record with the new content hash and chunk count.'},
+      {from:1, to:3, lbl:'REPLACE symbol_index for path', desc:'Re-extract AST symbols (functions, classes, methods) and update the symbol_index table.'},
+      {from:1, to:1, self:true, lbl:'LLM summarize (SHA-keyed cache)', desc:'Generate a new L1 file summary via LLM. The result is cached by (project, path, SHA) key.'},
+      {from:1, to:3, lbl:'UPSERT l1_summaries SET summary, sha256', desc:'Save the new L1 summary to PostgreSQL. Old summary (different SHA) is superseded.'}
+    ]
+  },
+  uc3: {
+    title: 'UC-3: Developer Query (semantic_search)', color: '#059669',
+    actors: ['IDE', 'MCP', 'Embedder', 'Qdrant', 'PostgreSQL', 'ReRanker'],
+    steps: [
+      {from:0, to:1, lbl:'semantic_search("how does auth work?")', desc:'The calling agent calls the semantic_search tool via StreamableHTTP on the /mcp endpoint — no LLM-routed gateway in between.'},
+      {from:1, to:1, self:true, lbl:'looks like an identifier?', desc:'MCP server checks whether the query is a single identifier token (no spaces, CamelCase/snake_case) to decide the fast-path vs. vector search.'},
+      {from:1, to:4, lbl:'[if identifier] SELECT * FROM symbol_index WHERE name ILIKE ...', desc:'Identifier fast-path: query the symbol_index table directly for an exact/partial match. Skips vector search entirely when it hits.'},
+      {from:4, to:1, ret:true, lbl:'symbol matches (file:line, kind, signature)', desc:'If symbol matches are found, they are returned immediately as raw ranked results — no further steps needed.'},
+      {from:1, to:1, self:true, lbl:'expandQueries(query, profile)', desc:'Generates up to 4 query variants total: profile-scoped framework-keyword expansions (e.g. Koin/Spring/Vue terms, only when the query and profile match) plus a generic lexical paraphrase step that always runs — synonym substitution for common code-question verbs (decide/determine/compute, configure/set up, route/dispatch, write/persist/store) and "How does X do Y" reordering into "Y X" / "X Y implementation".'},
+      {from:1, to:2, lbl:'[else] embed(variant) — up to 4 variants', desc:'Each expanded query variant is embedded separately via the shared, mandatory inference service (FastEmbed/onnxruntime — not LM Studio/omlx).'},
+      {from:2, to:1, ret:true, lbl:'query vectors (768-dim each)', desc:'Embedding service returns one vector per variant.'},
+      {from:1, to:3, lbl:'search(vector) per variant → merge best score per chunk', desc:'Qdrant semantic vector search runs once per variant; results are deduplicated by relative_path:start_line, keeping the highest score seen across all variants for each chunk.'},
+      {from:3, to:1, ret:true, lbl:'top-k chunks + semantic scores', desc:'Qdrant returns ranked chunks with pure cosine-similarity scores — no keyword blending or re-ranking has happened yet at this point.'},
+      {from:1, to:5, lbl:'rerank(chunks, query)', desc:'Send Qdrant hits to the same shared inference service — ColBERT MaxSim scoring by default (FastEmbed), or a lightweight cross-encoder backend, chosen at Docker build time, not config.yaml. Always attempted (mandatory), not a config toggle.'},
+      {from:5, to:1, ret:true, lbl:'re-ranked chunks', desc:'Chunks re-ordered by the reranker backend\'s own score scale. ~100-300ms latency for ColBERT, ~5-50ms for the cross-encoder fallback.'},
+      {from:1, to:1, self:true, lbl:'[on failure only] keyword-boost fallback: 0.75*sem + 0.25*kw', desc:'When the inference service's /rerank call fails (transient network error, service briefly restarting) — not a configurable "disabled" state — blend the semantic score with a lightweight camelCase-split keyword-frequency score instead. This and the reranker step above are alternatives — never both in the same request.'},
+      {from:1, to:4, lbl:'SELECT summary FROM l1_summaries WHERE path+sha', desc:'Fetch cached L1 summaries for the hit files from PostgreSQL (keyed by project_key, path, sha256).'},
+      {from:4, to:1, ret:true, lbl:'summaries (~250 tokens each)', desc:'L1 summary text returned from database. No LLM call needed — summaries were cached on the last file change.'},
+      {from:1, to:1, self:true, lbl:'if top pre-rerank score < 0.5: prepend low-confidence warning', desc:'The best score seen BEFORE re-ranking (not the reranker\'s own, differently-scaled score) is checked against LOW_CONFIDENCE_THRESHOLD. Below it, a "⚠ No strong match" notice is prepended to the response — a signal to the agent to consider rephrasing or that the symbol may have been removed/renamed. The ranked hits are still returned either way, never suppressed.'},
+      {from:1, to:0, ret:true, lbl:'raw ranked hits (file:line, score, L1 summary) [+ low-confidence notice if applicable]', desc:'No LLM anywhere in this path, no prose condensation. The calling agent judges relevance itself and decides whether to call get_file next.'}
+    ]
+  },
+  uc4: {
+    title: 'UC-4: Code Retrieval (get_file)', color: '#d97706',
+    actors: ['IDE', 'MCP', 'PostgreSQL', 'Qdrant'],
+    steps: [
+      {from:0, to:1, lbl:'get_file("UserService.kt", 45, 120)', desc:'IDE calls the get_file tool with a file path and optional exact line range — typically after semantic_search identified this location.'},
+      {from:1, to:1, self:true, lbl:'check include_extensions safelist', desc:'MCP server verifies the file extension is in the indexed safelist; rejects (with a directory hint if applicable) otherwise.'},
+      {from:1, to:2, lbl:'SELECT * FROM doc_trees WHERE path=...', desc:'Check whether this file was tree-indexed (PageIndex-style docs) rather than chunk-indexed.'},
+      {from:2, to:1, ret:true, lbl:'doc-tree row or no row', desc:'If a tree-indexed doc row exists, its stored body_text (in the tree_json nodes) will be sliced. Otherwise routing falls through to Qdrant chunk lookup.'},
+      {from:1, to:2, lbl:'[if tree] get node body_text', desc:'For tree-indexed docs the relevant section text is read from the stored doc_tree node body_text in PostgreSQL; the live file is never read from disk.'},
+      {from:1, to:3, lbl:'[else] scroll points WHERE path=...', desc:'For ordinary source/config files, do a direct Qdrant scroll query by file path — no vector search involved, no LLM.'},
+      {from:3, to:1, ret:true, lbl:'raw source chunks (payload)', desc:'Qdrant returns the text, start_line, end_line, symbol for each chunk from the payload field.'},
+      {from:1, to:1, self:true, lbl:'exact slice; merge chunks; report gaps; cap max_chars', desc:'Slice stored chunk text or doc-tree body_text to the precise requested line range (not whole-chunk filtering), merge pieces from overlapping chunks, cap to max_chars, and report coverage gaps. If no indexed content covers the range, return an explicit "not covered" note instead of a nearest-chunk fallback. No project file is read from disk.'},
+      {from:1, to:0, ret:true, lbl:'source code or coverage note, zero LLM/disk cost', desc:'Raw source code (or a precise coverage-gap note) returned to IDE. Zero LLM involvement and zero project-source disk reads anywhere in get_file — pure DB/vector-store lookup.'}
+    ]
+  },
+  uc5: {
+    title: 'UC-5: Impact Analysis (analyze_impact)', color: '#0891b2',
+    actors: ['IDE', 'MCP', 'PostgreSQL'],
+    steps: [
+      {from:0, to:1, lbl:'analyze_impact("UserService.login", direction="both", depth=1)', desc:'IDE calls analyze_impact to find the blast radius of a symbol before refactoring — no LLM in the path, pure graph traversal.'},
+      {from:1, to:2, lbl:'SELECT ... FROM call_edges WHERE callee_name=...', desc:'Look up direct callers (and/or callees) of the symbol from the call_edges table, populated by symbol_extractor.py (tree-sitter/regex call extraction) via indexer.py at index time — not the chunker.'},
+      {from:2, to:1, ret:true, lbl:'caller/callee rows (file, line, hops)', desc:'PostgreSQL returns matching edges, each hop annotated with its distance from the origin symbol (bounded by requested depth, 1-5).'},
+      {from:1, to:1, self:true, lbl:'BFS traversal up to depth; collect ambiguous edges', desc:'Walk the call graph breadth-first up to the requested depth. Calls that cannot be resolved to a single unique symbol (overloads, dynamic dispatch) are collected separately as ambiguous_edges with their candidate list, rather than silently guessing.'},
+      {from:1, to:2, lbl:'SELECT DISTINCT importer_file/caller_file FROM import_edges + call_edges (test heuristic)', desc:'Separately identify test files likely covering this symbol, by matching both import_edges (files importing the target file) and call_edges (files calling the target symbol) against a test-path/name pattern (include_tests, default true).'},
+      {from:2, to:1, ret:true, lbl:'affected test file paths', desc:'PostgreSQL returns the distinct file paths considered test coverage for this symbol.'},
+      {from:1, to:1, self:true, lbl:'compose blast_radius_summary', desc:'A short human-readable line: caller count + distinct-file count, plus (if include_tests) either "N file(s) have no matching test file" or "all caller files have a matching test file" — not a generic callers/callees/ambiguous-edge tally.'},
+      {from:1, to:0, ret:true, lbl:'callers, callees, ambiguous edges, affected tests, blast radius', desc:'No LLM involvement — a direct, structured graph-traversal answer built from import_edges/call_edges populated by symbol_extractor.py/indexer.py (not the chunker), letting the agent judge refactor risk itself.'}
+    ]
+  },
+  uc6: {
+    title: 'UC-6: Symbol Resolution (resolve_symbol)', color: '#7c3aed',
+    actors: ['IDE', 'MCP', 'LSP Bridge', 'Language Server'],
+    steps: [
+      {from:0, to:1, lbl:'resolve_symbol("UserService.kt", 45, 12, kind="definition")', desc:'IDE calls resolve_symbol for a real, LSP-backed answer (definition/references/hover) — only available for auto-detected languages, not a manually-set config.yaml field.'},
+      {from:1, to:1, self:true, lbl:'detect language from extension; check auto-detected enabled_languages', desc:'A language is enabled iff the project contains at least one file of that language AND the LSP Bridge image is capable of installing that language\'s server (LSP_INSTALLED_LANGUAGES) — not a file-count/"enough files" threshold. MCP server checks the file extension against this project\'s auto-detected set before forwarding the request.'},
+      {from:1, to:2, lbl:'POST /resolve {project_key, language, file_path, line, character, kind}', desc:'Forward the resolution request to the LSP Bridge container, which owns the pool of per-project, per-language language server processes.'},
+      {from:2, to:2, self:true, lbl:'[cold start] spawn language server if idle/unloaded', desc:'If the language server for this project+language is not already running (idle-timed-out or never started), the bridge begins starting it — this can take several seconds for larger languages (e.g. Java, Kotlin).'},
+      {from:2, to:1, ret:true, lbl:'[if still starting] 503 {still_starting:true, retry_after_seconds}', desc:'Rather than an opaque timeout, a still-starting language server returns a structured 503 telling the caller how long to wait — the MCP server turns this into an explicit "still starting, retry in ~Ns" message instead of a generic failure, so the agent knows to retry rather than concluding the tool is broken.'},
+      {from:1, to:0, ret:true, lbl:'[if still starting] "resolve_symbol: language server is still starting up... retry in ~Ns"', desc:'This is surfaced as expected/actionable, not an error — the agent is expected to wait and call resolve_symbol again.'},
+      {from:2, to:3, lbl:'textDocument/definition|references|hover (LSP protocol)', desc:'Once warm, the bridge forwards the actual LSP request over stdio/JSON-RPC to the running language server process for this project.'},
+      {from:3, to:2, ret:true, lbl:'LSP response (locations or hover markdown)', desc:'The language server returns real, type-aware results — not text/embedding search — because it has the project\'s full symbol table and type information loaded.'},
+      {from:2, to:1, ret:true, lbl:'{kind, results[] | hover}', desc:'The LSP Bridge normalizes the language-server-specific response into the MCP tool\'s stable {kind, results, hover} shape.'},
+      {from:1, to:0, ret:true, lbl:'Definition/References list or hover text', desc:'Real compiler/language-server-backed answer returned to the IDE — distinct from get_file/semantic_search, which are text/vector lookups only.'}
+    ]
+  }
+};
+
+var currentUC = null;
+var currentStep = -1;
+var playing = false;
+var playTimer = null;
+
+function selectUC(id) {
+  currentUC = id;
+  currentStep = -1;
+  stopPlay();
+  renderSVG(id);
+  updateControls();
+  document.querySelectorAll('.seq-uc-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-uc') === id);
+  });
+  document.getElementById('seq-title').textContent = SEQS[id].title;
+  document.getElementById('seq-step-detail').innerHTML =
+    '<p class="step-desc-text">Click any numbered step in the diagram, or press <strong style="color:var(--text)">Next</strong> / <strong style="color:var(--text)">Play</strong>, to see its details.</p>';
+}
+
+function renderSVG(id) {
+  var seq = SEQS[id];
+  var actors = seq.actors;
+  var steps = seq.steps;
+  var n = actors.length;
+  var W = Math.max(760, n * 130 + 60);
+  var gap = (W - 60) / Math.max(n - 1, 1);
+  var xs = [];
+  for (var i = 0; i < n; i++) xs.push(30 + i * gap);
+  var stepH = 52;
+  var hdrH = 80;
+  var H = hdrH + steps.length * stepH + 30;
+
+  var p = [];
+  p.push('<svg id="seq-svg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="min-height:' + H + 'px;width:100%">');
+  p.push('<defs>');
+  p.push('<marker id="sa" markerWidth="8" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/></marker>');
+  p.push('<marker id="sa-r" markerWidth="8" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#8892a4"/></marker>');
+  p.push('</defs>');
+
+  for (var i = 0; i < n; i++) {
+    var x = xs[i];
+    var bw = Math.min(100, gap - 10);
+    p.push('<rect x="' + (x - bw/2) + '" y="10" width="' + bw + '" height="32" rx="6" fill="#22263a" stroke="#6366f1" stroke-width="1.5"/>');
+    var lbl = actors[i];
+    var fs = lbl.length > 9 ? 9 : 11;
+    p.push('<text x="' + x + '" y="31" text-anchor="middle" font-size="' + fs + '" fill="#e2e8f0" font-weight="700">' + xe(lbl) + '</text>');
+    p.push('<line x1="' + x + '" y1="42" x2="' + x + '" y2="' + (H - 10) + '" stroke="#2e3347" stroke-width="1" stroke-dasharray="5,4"/>');
+  }
+
+  for (var s = 0; s < steps.length; s++) {
+    var st = steps[s];
+    var y = hdrH + s * stepH;
+    var x1 = xs[st.from];
+    var isSelf = st.self || false;
+    var isRet = st.ret || false;
+    var color = isRet ? '#6b7280' : '#6366f1';
+    var marker = isRet ? 'url(#sa-r)' : 'url(#sa)';
+    var dash = isRet ? ' stroke-dasharray="5,3"' : '';
+    p.push('<g class="sq-step" id="sq-' + s + '" onclick="selectStep(' + s + ')">');
+    if (isSelf) {
+      var rx = x1 + Math.min(34, gap * 0.24);
+      p.push('<path d="M' + x1 + ',' + y + ' C' + rx + ',' + y + ' ' + rx + ',' + (y+28) + ' ' + x1 + ',' + (y+28) + '" fill="none" stroke="#6366f1" stroke-width="1.5" marker-end="url(#sa)"/>');
+      var tlbl = st.lbl.length > 30 ? st.lbl.substring(0,28) + '...' : st.lbl;
+      p.push('<text class="step-arrow-lbl" x="' + (x1 + rx/3 + 14) + '" y="' + (y + 16) + '" font-size="9" fill="#a5b4fc">' + xe(tlbl) + '</text>');
+    } else {
+      var x2 = xs[st.to];
+      var dir = x2 > x1 ? 1 : -1;
+      var ex = x2 - dir * 8;
+      p.push('<line x1="' + x1 + '" y1="' + y + '" x2="' + ex + '" y2="' + y + '" stroke="' + color + '" stroke-width="1.5"' + dash + ' marker-end="' + marker + '"/>');
+      var mx = (x1 + x2) / 2;
+      var tlbl2 = st.lbl.length > 38 ? st.lbl.substring(0,36) + '...' : st.lbl;
+      p.push('<text class="step-arrow-lbl" x="' + mx + '" y="' + (y - 5) + '" text-anchor="middle" font-size="9" fill="' + (isRet ? '#6b7280' : '#a5b4fc') + '">' + xe(tlbl2) + '</text>');
+    }
+    p.push('<circle class="step-circle" cx="' + (W - 16) + '" cy="' + y + '" r="10"/>');
+    p.push('<text class="step-num-text" x="' + (W - 16) + '" y="' + (y + 4) + '" text-anchor="middle" font-size="9">' + (s+1) + '</text>');
+    p.push('</g>');
+  }
+  p.push('</svg>');
+  document.getElementById('seq-canvas').innerHTML = p.join('');
+}
+
+function xe(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function selectStep(i) {
+  if (!currentUC) return;
+  currentStep = i;
+  highlightStep(i);
+  updateControls();
+  updateDetail(i);
+}
+
+function seqNext() {
+  if (!currentUC) return;
+  var total = SEQS[currentUC].steps.length;
+  if (currentStep < total - 1) {
+    selectStep(currentStep + 1);
+  }
+}
+
+function seqPrev() {
+  if (!currentUC) return;
+  if (currentStep > 0) {
+    selectStep(currentStep - 1);
+  } else if (currentStep === 0) {
+    currentStep = -1;
+    highlightStep(-1);
+    updateControls();
+    document.getElementById('seq-step-detail').innerHTML =
+      '<p class="step-desc-text">Click any numbered step, or press Next / Play.</p>';
+  }
+}
+
+function seqReset() {
+  stopPlay();
+  if (!currentUC) return;
+  currentStep = -1;
+  highlightStep(-1);
+  updateControls();
+  document.getElementById('seq-step-detail').innerHTML =
+    '<p class="step-desc-text">Click any numbered step, or press Next / Play.</p>';
+}
+
+function startPlay() {
+  if (!currentUC) return;
+  playing = true;
+  document.getElementById('btn-play').textContent = 'Pause';
+  function tick() {
+    if (!playing) return;
+    var total = SEQS[currentUC].steps.length;
+    if (currentStep < total - 1) {
+      seqNext();
+      playTimer = setTimeout(tick, 900);
+    } else {
+      stopPlay();
+    }
+  }
+  playTimer = setTimeout(tick, 300);
+}
+
+function stopPlay() {
+  playing = false;
+  if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+  var btn = document.getElementById('btn-play');
+  if (btn) btn.textContent = 'Play';
+}
+
+function togglePlay() {
+  if (playing) stopPlay(); else startPlay();
+}
+
+function highlightStep(i) {
+  var total = currentUC ? SEQS[currentUC].steps.length : 0;
+  for (var k = 0; k < total; k++) {
+    var el = document.getElementById('sq-' + k);
+    if (el) el.classList.toggle('current', k === i);
+  }
+  if (i < 0) return;
+  var cvs = document.getElementById('seq-canvas');
+  var svg = document.getElementById('seq-svg');
+  if (cvs && svg) {
+    var vb = svg.getAttribute('viewBox').split(' ');
+    var svgH = parseFloat(vb[3]);
+    var stepH = 52, hdrH = 80;
+    var stepY = hdrH + i * stepH;
+    var scaledY = stepY * (cvs.clientHeight / svgH);
+    if (scaledY < cvs.scrollTop + 40 || scaledY > cvs.scrollTop + cvs.clientHeight - 60) {
+      cvs.scrollTop = Math.max(0, scaledY - cvs.clientHeight / 2);
+    }
+  }
+}
+
+function updateDetail(i) {
+  if (!currentUC) return;
+  var seq = SEQS[currentUC];
+  var st = seq.steps[i];
+  var actors = seq.actors;
+  var fromA = actors[st.from];
+  var toA = st.self ? fromA : actors[st.to];
+  var dir = st.self ? fromA + ' (self)' : (st.ret ? toA + ' &rarr; ' + fromA : fromA + ' &rarr; ' + toA);
+  document.getElementById('seq-step-detail').innerHTML =
+    '<div class="step-num-big">' + (i+1) + '</div>' +
+    '<div class="step-lbl">' + xe(st.lbl) + '</div>' +
+    '<div class="step-actors">' + dir + '</div>' +
+    '<div class="step-desc-text">' + xe(st.desc) + '</div>';
+}
+
+function updateControls() {
+  var hasUC = !!currentUC;
+  var total = hasUC ? SEQS[currentUC].steps.length : 0;
+  document.getElementById('btn-prev').disabled = !hasUC || currentStep < 0;
+  document.getElementById('btn-next').disabled = !hasUC || currentStep >= total - 1;
+  document.getElementById('btn-play').disabled = !hasUC;
+  document.getElementById('btn-reset').disabled = !hasUC;
+  document.getElementById('seq-progress').textContent = hasUC
+    ? 'Step ' + (currentStep < 0 ? 0 : currentStep + 1) + ' / ' + total
+    : '';
+}
+</script>
+</body>
+</html>

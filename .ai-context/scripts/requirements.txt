@@ -1,0 +1,4 @@
+# Dependencies for host-run scripts (check_models.py). Everything else under
+# scripts/ (validate_config.py, *.sh) is stdlib/bash only.
+# Pinned to the same version used by watcher/requirements.txt for consistency.
+httpx==0.28.1

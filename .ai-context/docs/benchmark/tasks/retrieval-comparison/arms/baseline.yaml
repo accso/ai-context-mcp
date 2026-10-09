@@ -1,0 +1,28 @@
+# Machine-readable arm config for the "baseline" arm of the retrieval
+# benchmark (plan §6 — migrated from
+# .github/skills/benchmark/references/benchmark-session-baseline.md, which
+# remains the authoritative human-readable protocol document; this file is
+# the tool-allowlist/metadata subset of it made machine-checkable).
+arm: baseline
+protocolDoc: .github/skills/benchmark/references/benchmark-session-baseline.md
+description: >
+  Answer every query using only generic, non-ranking filesystem primitives
+  (glob/list, grep-style text search, file read) — no semantic/vector
+  search, no symbol index, no IDE-native tools.
+allowedTools:
+  - "glob"        # file-listing / pattern match (e.g. find <path> -name/-type)
+  - "grep"        # literal or regex text search across files, unranked
+  - "read_file"   # read a whole file or a line range of one
+disallowedNote: >
+  Any semantic/vector search, any symbol index or declared-symbol lookup,
+  any ranking/scoring of results, any IDE-native tool, ai-context's own
+  tools, web search, or any relevance-sorted/recency-sorted find flag
+  invalidates that query's data point for this arm (see protocolDoc for
+  the full rationale, including the "no fuzzy-finder / no -newer" rule).
+operatorMetadataFields:
+  - targetRepository
+  - dateTimeRun
+  - totalFilesApprox
+  - totalFoldersApprox
+  - primaryLanguages
+  - executingModel

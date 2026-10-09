@@ -1,0 +1,65 @@
+# task.yaml — this repo's retrieval-tool-comparison Task (plan §6/§7).
+# Deliberately lives OUTSIDE .ai-benchmark/'s portable core (which has zero
+# ai-context-specific assumptions) — this file references .ai-benchmark/
+# as an external framework dependency instead.
+#
+# Migrated from (kept, NOT removed, per explicit instruction):
+#   .github/skills/benchmark/SKILL.md
+#   .github/skills/benchmark/scripts/bench.js
+#   a private query-set .md (not published)
+#   .github/skills/benchmark/references/benchmark-session-{ai-context,idea-mcp,baseline}.md
+#
+# Those files remain the authoritative human-readable protocol for running
+# an arm interactively (an agent reads them turn by turn). This task.yaml +
+# run.js is the machine-runnable counterpart: it loads the same frozen
+# query set (dataset.json, extracted byte-for-byte from the .md source)
+# and the same three arms (arms/*.yaml, tool-allowlist extracted from the
+# .md sources), and drives them through .ai-benchmark's Task/
+# InteractiveSessionSolver/Scorer/Report pipeline instead of bench.js.
+
+id: retrieval-comparison
+framework: ../../../../.ai-benchmark   # relative path to the portable framework
+description: >
+  3-arm comparison (ai-context / idea-mcp / baseline) of retrieval-tool
+  approaches to answering the same 30 frozen queries against a private
+  multi-project monorepo. The query set is not published; supply your own
+  dataset.json. See arms/*.yaml for each arm's tool allowlist.
+dataset: ./dataset.json
+arms:
+  - ./arms/ai-context.yaml
+  - ./arms/idea-mcp.yaml
+  - ./arms/baseline.yaml
+solver: InteractiveSessionSolver   # .ai-benchmark/solvers/interactive-session-solver.js
+scorers:
+  - TimingTokensScorer             # aggregates wrap/start-stop event timing + token counts
+  - ModelGradedScorer              # grades free-text answers vs. target using an independent grading model (plan §3.1 self-bias guard)
+specialScoringNotes:
+  q15: >
+    Open-ended by design (see the query set's note 1) — score on a
+    separate rubric (did it name the *ApiClient pattern and cite a real
+    example), not the exact/partial/miss/negative scale used elsewhere.
+  q18: >
+    Trick negative control — true answer is "yes, implicitly" via
+    implicit background token refresh. A flat "no" is WRONG. Grading prompt must
+    include the full ground-truth explanation, not just a keyword check.
+  q20: >
+    Trick negative control (inverse of q18) — true answer is a clean "no".
+    Grading prompt must include the full ground-truth explanation.
+runbook: >
+  Each arm must still be run in a brand-new session/context that has not
+  yet explored the target repo (isolation is the whole point — same
+  requirement as the original skill). Use .ai-benchmark/bin/cli.js as the
+  instrumentation CLI (direct successor to bench.js, same wrap/start/stop/
+  report shape, but persists into the .ai-benchmark Run lifecycle instead
+  of a flat log file). Point --sessions-dir at
+  .ai-context/docs/benchmark/sessions/ (sibling of tasks/, see §7 layout —
+  same output location the old skill used) so run output is committed
+  there, not left under this task-definition directory:
+    CLI=../../../../../.ai-benchmark/bin/cli.js
+    SESSIONS=../../sessions
+    node "$CLI" wrap  --arm <arm> --query <qN> --tool <t> --sessions-dir "$SESSIONS" -- <command...>
+    node "$CLI" start --arm <arm> --query <qN> --tool <t> --input "..." --sessions-dir "$SESSIONS"
+    node "$CLI" stop  --id <call_id> --output "..."
+    node "$CLI" report --arm <arm> --csv <arm>_summary.csv --sessions-dir "$SESSIONS" --finish
+  --finish finalizes the Run and writes report.json/report.md via
+  .ai-benchmark's Report generator into sessions/<runId>/.

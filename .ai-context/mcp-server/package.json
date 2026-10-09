@@ -1,0 +1,28 @@
+{
+  "name": "ai-context-mcp-server",
+  "version": "1.0.0",
+  "main": "dist/multi_server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/multi_server.js",
+    "test:unit": "TS_NODE_PROJECT=tsconfig.test.json node --require ./test/register-js-to-ts.js --require ts-node/register --test test/unit/**/*.test.ts",
+    "test:integration": "TS_NODE_PROJECT=tsconfig.test.json node --require ./test/register-js-to-ts.js --require ts-node/register --test test/integration/**/*.test.ts",
+    "test:e2e": "TS_NODE_PROJECT=tsconfig.test.json node --require ./test/register-js-to-ts.js --require ts-node/register --test test/e2e/**/*.test.ts",
+    "test": "npm run test:unit && npm run test:integration && npm run test:e2e"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "pg": "^8.20.0",
+    "axios": "^1.16.1",
+    "js-yaml": "^4.1.1",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.8.0",
+    "@types/pg": "^8.20.0",
+    "typescript": "^6.0.3",
+    "ts-node": "^10.9.2"
+  }
+}
